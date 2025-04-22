@@ -183,6 +183,28 @@
   background-color: rgba(211, 47, 47, 0.1);
 }
 
+.document-s3-path {
+  display: flex;
+  align-items: center;
+  margin-top: 5px;
+  font-size: 12px;
+  color: #666;
+  word-break: break-all;
+}
+
+.s3-path-label {
+  font-weight: bold;
+  margin-right: 5px;
+}
+
+.s3-path-value {
+  font-family: monospace;
+  background-color: #f4f4f4;
+  padding: 2px 4px;
+  border-radius: 3px;
+  border: 1px solid #ddd;
+}
+
 @keyframes slideIn {
   from {
     opacity: 0;

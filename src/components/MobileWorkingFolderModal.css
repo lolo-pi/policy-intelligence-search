@@ -172,4 +172,19 @@
 
 :root.dark-mode .empty-folder-message {
   color: #999;
+}
+
+.document-s3-path {
+  font-size: 0.75rem;
+  color: #777;
+  margin-top: 5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 95%;
+}
+
+.s3-path-label {
+  font-weight: 600;
+  color: #555;
 } 

@@ -138,6 +138,11 @@ const MobileWorkingFolderModal = ({ onClose }) => {
                 <p className="document-meta">
                   {doc.jurisdiction} - {doc.type}
                 </p>
+                {doc.s3Path && (
+                  <p className="document-s3-path">
+                    <span className="s3-path-label">S3:</span> {doc.s3Path}
+                  </p>
+                )}
               </div>
               <div className="swipe-hint">← Swipe to remove</div>
             </div>

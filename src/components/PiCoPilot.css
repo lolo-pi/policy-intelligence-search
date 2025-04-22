@@ -289,4 +289,241 @@ h3 {
   font-size: 13px;
   color: #4a4a4a;
   line-height: 1.5;
+}
+
+.working-folder-status {
+  margin-top: 20px;
+  padding: 10px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.working-folder-status h3 {
+  font-size: 14px;
+  margin-bottom: 10px;
+  color: #333;
+}
+
+.s3-document-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.s3-document-item {
+  padding: 8px;
+  margin-bottom: 5px;
+  background-color: white;
+  border-radius: 6px;
+  border: 1px solid #dee2e6;
+  font-size: 12px;
+}
+
+.s3-document-item .doc-title {
+  font-weight: bold;
+  margin-bottom: 3px;
+  color: #212529;
+}
+
+.s3-document-item .doc-path {
+  font-family: monospace;
+  font-size: 10px;
+  color: #6c757d;
+  word-break: break-all;
+  background-color: #f1f3f5;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+
+/* Document Processing Section */
+.document-processing-section {
+  margin-top: 20px;
+  padding: 15px;
+  background-color: white;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.document-processing-section h3 {
+  font-size: 16px;
+  margin-bottom: 12px;
+  color: #274C77;
+}
+
+.document-processing-section h4 {
+  font-size: 14px;
+  margin: 12px 0 8px;
+  color: #495057;
+}
+
+/* Ingestion Controls */
+.ingestion-controls {
+  display: flex;
+  gap: 10px;
+  margin: 15px 0;
+}
+
+.ingest-button, .clear-button {
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.ingest-button {
+  background-color: #457b9d;
+  color: white;
+  flex: 2;
+}
+
+.ingest-button:hover:not(:disabled) {
+  background-color: #274C77;
+}
+
+.ingest-button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.clear-button {
+  background-color: #e9ecef;
+  color: #495057;
+  flex: 1;
+}
+
+.clear-button:hover:not(:disabled) {
+  background-color: #dee2e6;
+}
+
+.clear-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Progress Indicator */
+.ingestion-progress {
+  margin: 15px 0;
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background-color: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background-color: #457b9d;
+  transition: width 0.3s ease;
+}
+
+.progress-message {
+  font-size: 12px;
+  color: #6c757d;
+  margin: 5px 0 0;
+  text-align: center;
+}
+
+/* Error Display */
+.ingestion-error {
+  margin: 10px 0;
+  padding: 10px;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 4px;
+}
+
+.error-message {
+  color: #721c24;
+  font-size: 12px;
+  margin: 0;
+}
+
+/* Chunks Status */
+.chunks-status {
+  margin: 15px 0 5px;
+  padding: 10px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+}
+
+.chunks-status p {
+  font-size: 13px;
+  color: #495057;
+  margin: 5px 0;
+}
+
+.success-message {
+  color: #28a745;
+  font-weight: 500;
+}
+
+.citation-info {
+  margin-top: 20px;
+  padding: 10px;
+  background-color: #e7f3ff;
+  border-radius: 4px;
+  border: 1px solid #cce5ff;
+}
+
+.citation-info p {
+  margin: 5px 0;
+  font-size: 12px;
+  color: #0056b3;
+}
+
+/* Update PiCoPilot styling for the co-pilot view */
+.app-wrapper .main-layout {
+  position: relative;
+}
+
+/* When in co-pilot page, adjust the content placement */
+.main-section.full-width .app-wrapper {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}
+
+.main-section.full-width .main-layout {
+  padding: 0;
+  margin: 0;
+  width: 100%;
+}
+
+/* Ensure the co-pilot sidebar is visible */
+.main-section.full-width .sidebar {
+  position: relative;
+  width: 275px;
+  left: 0;
+  background-color: white;
+  z-index: 10;
+  border-right: 1px solid #e0e0e0;
+  height: 100%;
+  overflow-y: auto;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Properly place the co-pilot container */
+.main-section.full-width .copilot-container {
+  flex: 1;
+  padding: 20px;
+  margin-left: 0;
+  min-width: 0;
+}
+
+.partial-success-message {
+  color: #856404;
+  background-color: #fff3cd;
+  border: 1px solid #ffeeba;
+  border-radius: 4px;
+  padding: 8px;
+  margin-top: 8px;
+  font-size: 13px;
 } 

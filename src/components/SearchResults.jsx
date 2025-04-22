@@ -42,13 +42,19 @@ const SearchResults = () => {
     if (inFolder) {
       removeFromWorkingFolder(docId);
     } else {
+      // Extract S3 URI from document if available
+      const s3Path = document.url && document.url.startsWith('s3://') ? 
+                     document.url : 
+                     (document.id && document.id.startsWith('s3://') ? document.id : '');
+      
       addToWorkingFolder({
         id: docId,
         title: document.title,
-        url: document.url,
+        url: document.url || '',
         description: document.description,
         jurisdiction: document.jurisdiction,
-        type: document.type
+        type: document.type,
+        s3Path: s3Path // Explicitly pass s3Path
       });
     }
   }, [workingFolderDocs, addToWorkingFolder, removeFromWorkingFolder]);
@@ -104,13 +110,19 @@ const SearchResults = () => {
         }
       } else { // Swipe right to add
         if (!isInFolder) {
+          // Extract S3 URI from document if available
+          const s3Path = doc.url && doc.url.startsWith('s3://') ? 
+                        doc.url : 
+                        (doc.id && doc.id.startsWith('s3://') ? doc.id : '');
+          
           addToWorkingFolder({
             id: doc.id,
             title: doc.title,
-            url: doc.url,
+            url: doc.url || '',
             description: doc.description,
             jurisdiction: doc.jurisdiction,
-            type: doc.type
+            type: doc.type,
+            s3Path: s3Path // Explicitly pass s3Path
           });
         }
       }

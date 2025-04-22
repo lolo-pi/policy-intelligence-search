@@ -258,6 +258,52 @@ function logDocTypeDetails(docType) {
 }
 
 /**
+ * Extract an S3 path from a Kendra result item
+ * @param {Object} item - The Kendra result item
+ * @returns {String} - The S3 path if found, or an empty string
+ */
+export const extractS3Path = (item) => {
+  if (!item) return '';
+  
+  // Check DocumentAttributes for S3 path
+  if (Array.isArray(item.DocumentAttributes)) {
+    // Check for S3 path in _source_uri attribute
+    const sourceUriAttr = item.DocumentAttributes.find(attr => attr.Key === '_source_uri');
+    if (sourceUriAttr?.Value?.StringValue && sourceUriAttr.Value.StringValue.startsWith('s3://')) {
+      return sourceUriAttr.Value.StringValue;
+    }
+    
+    // Check for S3 path in a specific s3_path attribute
+    const s3PathAttr = item.DocumentAttributes.find(attr => 
+      attr.Key === 's3_path' || attr.Key === 'S3Path' || attr.Key === 's3_uri'
+    );
+    if (s3PathAttr?.Value?.StringValue && s3PathAttr.Value.StringValue.startsWith('s3://')) {
+      return s3PathAttr.Value.StringValue;
+    }
+  }
+  
+  // Check various fields that might contain an S3 path
+  if (item.S3Path && item.S3Path.startsWith('s3://')) {
+    return item.S3Path;
+  }
+  
+  if (item.DocumentURI && item.DocumentURI.startsWith('s3://')) {
+    return item.DocumentURI;
+  }
+  
+  if (item.SourceURI && item.SourceURI.startsWith('s3://')) {
+    return item.SourceURI;
+  }
+  
+  if (item.DocumentId && item.DocumentId.startsWith('s3://')) {
+    return item.DocumentId;
+  }
+  
+  // If we didn't find an S3 path, return empty string
+  return '';
+};
+
+/**
  * Transform Kendra results into a standardized format for the frontend
  * @param {Array} kendraResponse - The raw Kendra response or results array
  * @returns {Array} - Standardized document objects
@@ -425,6 +471,12 @@ export const transformKendraResults = (kendraResponse) => {
       description = item._source._excerpt;
     }
     
+    // Extract S3 path
+    const s3Path = extractS3Path(item);
+    if (shouldLog && s3Path) {
+      console.log(`Found S3 path: ${s3Path}`);
+    }
+    
     // Create and return the standardized document object
     return {
       id: item.Id || item.DocumentId || `doc-${Math.random().toString(36).substring(2, 15)}`,
@@ -433,7 +485,8 @@ export const transformKendraResults = (kendraResponse) => {
       description: description,
       type: documentType,
       jurisdiction: getJurisdictionFromResponse(item), // Add jurisdiction field
-      source: item.UpdatedAt || item.CreatedAt || new Date().toISOString()
+      source: item.UpdatedAt || item.CreatedAt || new Date().toISOString(),
+      s3Path: s3Path // Add S3 path to the document object
     };
   });
 };

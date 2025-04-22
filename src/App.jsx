@@ -16,6 +16,7 @@ import { FolderProvider } from './context/FolderContext';
 import { WorkingFolderProvider } from './context/WorkingFolderContext';
 import { FolderPageProvider } from './context/FolderPageContext';
 import { SearchPageProvider, useSearchPage } from './context/SearchPageContext';
+import { ChunkedDocsProvider } from './context/ChunkedDocsContext';
 import { AuthProvider, AuthContext } from './context/AuthContext';
 import './aws-config';
 import mockDataCO2 from './mockDataCO2.js';
@@ -60,13 +61,15 @@ function MainContent() {
       <TopNav />
 
       <div className="main-layout">
-        <aside className={`sidebar ${isPiCoPilotPage ? 'disabled' : ''}`}>
-          <SidebarFilters 
-            isDisabled={isPiCoPilotPage} 
-            documentCounts={documentCounts}
-            onFilterChange={handleFilterChange}
-          />
-        </aside>
+        {/* For PiCoPilot page, don't use the standard sidebar but let the component handle its own sidebar */}
+        {!isPiCoPilotPage && (
+          <aside className={`sidebar`}>
+            <SidebarFilters 
+              documentCounts={documentCounts}
+              onFilterChange={handleFilterChange}
+            />
+          </aside>
+        )}
 
         <main className={`main-section ${isPiCoPilotPage ? 'full-width' : ''}`}>
           {isHomePage && (
@@ -106,38 +109,40 @@ function App() {
   return (
     <Router>
       <WorkingFolderProvider>
-        <FolderProvider>
-          <FolderPageProvider>
-            <SearchPageProvider>
-              <Routes>
-                <Route 
-                  path="/login" 
-                  element={
-                    !user ? (
-                      isMobile ? (
-                        <MobileLoginPage />
+        <ChunkedDocsProvider>
+          <FolderProvider>
+            <FolderPageProvider>
+              <SearchPageProvider>
+                <Routes>
+                  <Route 
+                    path="/login" 
+                    element={
+                      !user ? (
+                        isMobile ? (
+                          <MobileLoginPage />
+                        ) : (
+                          <LoginPage />
+                        )
                       ) : (
-                        <LoginPage />
+                        <Navigate to="/" replace />
                       )
-                    ) : (
-                      <Navigate to="/" replace />
-                    )
-                  } 
-                />
-                <Route
-                  path="/*"
-                  element={
-                    user ? (
-                      <MainContent />
-                    ) : (
-                      <Navigate to="/login" replace />
-                    )
-                  }
-                />
-              </Routes>
-            </SearchPageProvider>
-          </FolderPageProvider>
-        </FolderProvider>
+                    } 
+                  />
+                  <Route
+                    path="/*"
+                    element={
+                      user ? (
+                        <MainContent />
+                      ) : (
+                        <Navigate to="/login" replace />
+                      )
+                    }
+                  />
+                </Routes>
+              </SearchPageProvider>
+            </FolderPageProvider>
+          </FolderProvider>
+        </ChunkedDocsProvider>
       </WorkingFolderProvider>
     </Router>
   );

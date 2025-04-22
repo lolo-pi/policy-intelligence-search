@@ -1,9 +1,23 @@
 import React from 'react';
 import './PiCoPilot.css';
+import { useChunkedDocs } from '../context/ChunkedDocsContext';
 
 const CitationsPanel = () => {
-  // Example citations
-  const citations = [
+  const { docTitles, chunks, chunkDocMap } = useChunkedDocs();
+  
+  // Get unique document sources for citations
+  const uniqueDocSources = Object.keys(docTitles);
+  
+  // Create citation objects from document titles
+  const docCitations = uniqueDocSources.map(source => ({
+    source,
+    title: docTitles[source] || source,
+    // We'll extract sample text from the chunks in the next step
+    text: 'Document processed and ready for analysis. Citations will be displayed here during chat.'
+  }));
+  
+  // If we have no processed documents, show demo citations
+  const citations = docCitations.length > 0 ? docCitations : [
     {
       title: 'Colorado - Regulation Number 20 - Colorado Low Emission Automobile Regulation',
       text: '...pursuant to §25-7-122, C.R.S. PART E HEAVY DUTY LOW NOx REGULATION (HD LOW NOx) I. Purpose The purpose of this Part E is to establish Colorado heavy-duty engine and vehicle standards that incorporate California engine and vehicle emission standards as provided for under Section...'
@@ -21,7 +35,7 @@ const CitationsPanel = () => {
   return (
     <div className="citations-panel">
       <div className="citations-header">
-        Citations
+        {docCitations.length > 0 ? 'Processed Documents' : 'Demo Citations'}
       </div>
       <div className="citations-list">
         {citations.map((citation, index) => (
@@ -36,6 +50,13 @@ const CitationsPanel = () => {
             <div className="citation-text">{citation.text}</div>
           </div>
         ))}
+        
+        {docCitations.length > 0 && (
+          <div className="citation-info">
+            <p>{chunks.length} total chunks ready for analysis</p>
+            <p>{docCitations.length} documents processed</p>
+          </div>
+        )}
       </div>
     </div>
   );

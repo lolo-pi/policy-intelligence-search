@@ -51,7 +51,14 @@ const WorkingFolderView = ({ isOpen, onClose, documents }) => {
                     <span className="document-description">{doc.description}</span>
                     <div className="document-meta">
                       <span className="document-jurisdiction">{doc.jurisdiction}</span>
+                      {doc.type && <span className="document-type">{doc.type}</span>}
                     </div>
+                    {doc.s3Path && (
+                      <div className="document-s3-path">
+                        <span className="s3-path-label">S3 Path:</span>
+                        <span className="s3-path-value">{doc.s3Path}</span>
+                      </div>
+                    )}
                   </div>
                   <button
                     className="remove-doc-button"
