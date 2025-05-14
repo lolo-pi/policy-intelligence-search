@@ -16,6 +16,7 @@ export const ChatProvider = ({ children }) => {
   const [activeThreadIndex, setActiveThreadIndex] = useState(null);
   const [lastQuestion, setLastQuestion] = useState('');
   const [threadId, setThreadId] = useState('');
+  const [selectedFolder, setSelectedFolder] = useState(null);
 
   // Load chat history and threadId from localStorage on mount
   useEffect(() => {
@@ -54,16 +55,36 @@ export const ChatProvider = ({ children }) => {
     setError(null);
     
     try {
+      // Create document list if folder is selected
+      const docTitles = selectedFolder?.documents?.map((doc, i) =>
+        `${i + 1}. ${doc.title}`
+      ).join('\n');
+
+      // Simple docHeader with just the document list and question
+      const docHeader = docTitles
+        ? `You are answering questions using the following Colorado regulatory documents:\n${docTitles}\n\nPlease use only these documents to answer the following question:\n${newQuestion}`
+        : newQuestion;
+
+      // Log the request payload for debugging
+      const requestPayload = {
+        threadId: threadId,
+        question: newQuestion,
+        contextPrompt: docHeader
+      };
+      
+      console.log("===== API REQUEST PAYLOAD =====");
+      console.log("Thread ID:", threadId);
+      console.log("Question:", newQuestion);
+      console.log("Context Prompt:", docHeader);
+      console.log("Full payload:", requestPayload);
+      console.log("===============================");
+
       const response = await fetch('https://gbgi989gbe.execute-api.us-west-2.amazonaws.com/sbx/kb-chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          threadId: threadId,
-          question: newQuestion,
-          contextPrompt: "Answer the question as completely as possible by using content retrieved from diverse sources (at least 4 distinct documents) and diverse document types rather than repeating a single document, unless otherwise instructed"
-        }),
+        body: JSON.stringify(requestPayload),
       });
 
       if (!response.ok) {
@@ -89,20 +110,24 @@ export const ChatProvider = ({ children }) => {
       
       setCitations(uniqueCitations);
 
-      // Add to chat history
+      // Add to chat history and cap at 6 entries
       setChatHistory(prev => {
-        const newHistory = [...prev, {
-          question: newQuestion,
+        const newEntry = {
+          question: newQuestion, // Store original question for display
           answer: data.answer,
           citations: uniqueCitations,
           timestamp: new Date().toISOString()
-        }];
-        setActiveThreadIndex(newHistory.length - 1);
-        return newHistory;
+        };
+
+        // Keep the most recent 6 entries (or all if less than 6)
+        const limitedHistory = [...prev, newEntry].slice(-6);
+        setActiveThreadIndex(limitedHistory.length - 1);
+        return limitedHistory;
       });
 
       // Clear the question input after successful submission
       setQuestion('');
+      setLastQuestion(newQuestion);
 
     } catch (err) {
       setError(err.message || 'Failed to fetch response');
@@ -140,7 +165,9 @@ export const ChatProvider = ({ children }) => {
       clearChat,
       lastQuestion,
       setLastQuestion,
-      threadId
+      threadId,
+      selectedFolder,
+      setSelectedFolder
     }}>
       {children}
     </ChatContext.Provider>

@@ -19,13 +19,15 @@ const PiCoPilotChat = ({ showHistory, setShowHistory, showToggleButton }) => {
     error,
     handleChatSubmit,
     chatHistory,
-    activeThreadIndex
+    activeThreadIndex,
+    selectedFolder,
+    setSelectedFolder
   } = useChat();
 
   const { folders } = useWorkingFolder();
   const [showFolderDropdown, setShowFolderDropdown] = React.useState(false);
-  const [selectedFolder, setSelectedFolder] = React.useState(null);
   const folderIconRef = React.useRef();
+  const messagesEndRef = React.useRef(null);
 
   const safeColors = Array.isArray(FOLDER_COLORS) && FOLDER_COLORS.length > 0 ? FOLDER_COLORS : ['#ccc'];
 
@@ -40,17 +42,18 @@ const PiCoPilotChat = ({ showHistory, setShowHistory, showToggleButton }) => {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [showFolderDropdown]);
 
+  // Scroll to bottom of messages whenever chat history changes
+  React.useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [chatHistory, isLoading]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!question.trim()) return;
     handleChatSubmit(question);
   };
-
-  // Determine which thread to display
-  const thread =
-    typeof activeThreadIndex === 'number' && chatHistory[activeThreadIndex]
-      ? chatHistory[activeThreadIndex]
-      : null;
 
   return (
     <div className="chat-container" style={{ position: 'relative', zIndex: 10 }}>
@@ -227,18 +230,19 @@ const PiCoPilotChat = ({ showHistory, setShowHistory, showToggleButton }) => {
           </div>
         )}
 
-        {isLoading && (
+        {isLoading && chatHistory.length === 0 && (
           <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '120px' }}>
             <LoadingSpinner />
           </div>
         )}
 
-        {!isLoading && thread && (
-          <>
+        {/* Display all messages in the chat history */}
+        {chatHistory.map((item, index) => (
+          <React.Fragment key={index}>
             {/* User message */}
             <div className="message user" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
               <div className="message-content" style={{ whiteSpace: 'pre-wrap', marginRight: '12px' }}>
-                {thread.question}
+                {item.question}
               </div>
               {/* User avatar (FaUser icon) */}
               <span className="user-icon" style={{ marginLeft: 0 }}>
@@ -249,11 +253,21 @@ const PiCoPilotChat = ({ showHistory, setShowHistory, showToggleButton }) => {
             <div className="message">
               <img src={aiTechnology} alt="AI" className="message-avatar" />
               <div className="message-content" style={{ whiteSpace: 'pre-wrap' }}>
-                {thread.answer}
+                {item.answer}
               </div>
             </div>
-          </>
+          </React.Fragment>
+        ))}
+
+        {/* Loading spinner for new messages */}
+        {isLoading && chatHistory.length > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '20px 0' }}>
+            <LoadingSpinner />
+          </div>
         )}
+        
+        {/* Ref for auto-scrolling */}
+        <div ref={messagesEndRef} />
       </div>
       <div className="search-input-container" style={{ position: 'relative', zIndex: 20 }}>
         <form onSubmit={handleSubmit} style={{ width: '100%', display: 'flex', position: 'relative' }}>
