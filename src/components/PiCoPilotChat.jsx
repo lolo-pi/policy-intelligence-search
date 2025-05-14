@@ -23,7 +23,8 @@ const PiCoPilotChat = ({ showHistory, setShowHistory, showToggleButton, showSour
     chatHistory,
     activeThreadIndex,
     selectedFolder,
-    setSelectedFolder
+    setSelectedFolder,
+    clearChat
   } = useChat();
 
   const { folders } = useWorkingFolder();
@@ -86,6 +87,27 @@ const PiCoPilotChat = ({ showHistory, setShowHistory, showToggleButton, showSour
           </sub>
         </span>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, position: 'relative' }}>
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              clearChat();
+            }}
+            style={{
+              background: '#f0f5ff',
+              border: 'none',
+              color: '#274C77',
+              padding: '6px 12px',
+              borderRadius: '4px',
+              fontSize: '13px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'background 0.2s',
+            }}
+            onMouseOver={(e) => e.currentTarget.style.background = '#e0eaff'}
+            onMouseOut={(e) => e.currentTarget.style.background = '#f0f5ff'}
+          >
+            Clear Chat
+          </button>
           <div ref={folderIconRef} style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
             {selectedFolder ? (
               <div

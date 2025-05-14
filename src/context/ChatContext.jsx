@@ -152,10 +152,15 @@ export const ChatProvider = ({ children }) => {
     setAnswer('');
     setCitations([]);
     setError(null);
+    // Clear chat history and reset active thread index
+    setChatHistory([]);
+    setActiveThreadIndex(null);
     // Generate new threadId when clearing chat
     const newThreadId = uuidv4();
     setThreadId(newThreadId);
     localStorage.setItem(THREAD_ID_KEY, newThreadId);
+    // Also clear the chat history in localStorage
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify([]));
   };
 
   return (
