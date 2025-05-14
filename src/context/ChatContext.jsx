@@ -17,14 +17,13 @@ export const ChatProvider = ({ children }) => {
   const [activeThreadIndex, setActiveThreadIndex] = useState(null);
   const [lastQuestion, setLastQuestion] = useState('');
   const [threadId, setThreadId] = useState('');
-<<<<<<< HEAD
+
   const [selectedFolder, setSelectedFolder] = useState(null);
-=======
+
   const [showHistory, setShowHistory] = useState(() => {
     const stored = localStorage.getItem(SHOW_HISTORY_KEY);
     return stored === null ? false : stored === 'true';
   });
->>>>>>> 78fc5902f5ca9c5e2fb8e7dd49566a83079bfb88
 
   // Load chat history and threadId from localStorage on mount
   useEffect(() => {
@@ -178,13 +177,10 @@ export const ChatProvider = ({ children }) => {
       lastQuestion,
       setLastQuestion,
       threadId,
-<<<<<<< HEAD
       selectedFolder,
-      setSelectedFolder
-=======
+      setSelectedFolder,
       showHistory,
       setShowHistory
->>>>>>> 78fc5902f5ca9c5e2fb8e7dd49566a83079bfb88
     }}>
       {children}
     </ChatContext.Provider>
