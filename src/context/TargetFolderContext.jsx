@@ -6,16 +6,24 @@ export const useTargetFolder = () => useContext(TargetFolderContext);
 
 export const TargetFolderProvider = ({ children }) => {
   const [targetFolderId, setTargetFolderId] = useState(null);
+  const [showFolderModal, setShowFolderModal] = useState(false);
 
   const promptSelectFolder = () => {
-    // This function can be used to trigger a modal or UI prompt to select a folder
-    // For now, we'll just log a message
-    console.log('No target folder selected. Please select a folder.');
-    // In a real implementation, you might open a modal here
+    setShowFolderModal(true);
+  };
+
+  const closeFolderModal = () => {
+    setShowFolderModal(false);
   };
 
   return (
-    <TargetFolderContext.Provider value={{ targetFolderId, setTargetFolderId, promptSelectFolder }}>
+    <TargetFolderContext.Provider value={{ 
+      targetFolderId, 
+      setTargetFolderId, 
+      promptSelectFolder,
+      showFolderModal,
+      closeFolderModal
+    }}>
       {children}
     </TargetFolderContext.Provider>
   );

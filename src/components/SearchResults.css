@@ -242,6 +242,99 @@
     border-radius: 18px;
   }
 
+  .folder-picker-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(39, 76, 119, 0.32);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1001;
+    opacity: 1;
+    transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .folder-picker-modal.hidden {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .folder-picker-modal .modal-content {
+    background: white;
+    padding: 20px;
+    border-radius: 16px;
+    box-shadow: 0 6px 32px rgba(39, 76, 119, 0.12);
+    width: 90%;
+    max-width: 380px;
+    margin: 0;
+    transform: scale(1);
+    transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .folder-picker-modal.hidden .modal-content {
+    transform: scale(0.96);
+  }
+
+  .folder-picker-modal h2 {
+    color: #274C77;
+    font-weight: 700;
+    font-size: 22px;
+    margin: 0 0 16px 0;
+  }
+
+  .folder-picker-modal ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+
+  .folder-picker-modal li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+
+  .folder-picker-modal li:last-child {
+    border-bottom: none;
+  }
+
+  .folder-picker-modal li:hover {
+    background-color: #f5f7fa;
+  }
+
+  .folder-picker-modal li span {
+    color: #274C77;
+    font-size: 16px;
+    font-weight: 500;
+  }
+
+  .folder-picker-modal button {
+    width: 100%;
+    background: #274C77;
+    color: white;
+    font-weight: 600;
+    font-size: 16px;
+    border-radius: 8px;
+    padding: 12px 0;
+    border: none;
+    margin-top: 16px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+
+  .folder-picker-modal button:hover {
+    background: #1d3857;
+  }
+
   @keyframes pulse-blue-shadow {
     0% {
       box-shadow: 0 0 24px 0 rgba(69, 123, 157, 0.25), 0 0 0 0 rgba(69, 123, 157, 0.18);
@@ -340,6 +433,25 @@
 
   .result-tags {
     flex-wrap: wrap;
+  }
+
+  .duplicate-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 32px;
+    transform: translateX(-50%);
+    background: #fff3cd;
+    color: #d32f2f;
+    border: 1.5px solid #ffe082;
+    border-radius: 8px;
+    padding: 12px 24px;
+    font-size: 16px;
+    font-weight: 600;
+    box-shadow: 0 4px 16px rgba(39,76,119,0.10);
+    z-index: 2002;
+    opacity: 0.98;
+    pointer-events: none;
+    transition: opacity 0.3s;
   }
 }
 

@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom';
 import { useSearchPage } from '../context/SearchPageContext';
 import { useWorkingFolder } from '../context/WorkingFolderContext';
 import { AuthContext } from '../context/AuthContext';
-import { FaUser } from 'react-icons/fa';
+import { FaUser, FaInfoCircle, FaRegHandPointRight, FaRegHandPointLeft, FaFolderOpen } from 'react-icons/fa';
 import MobileSearchBar from './MobileSearchBar';
 import SearchResults from './SearchResults';
 import MobileChat from './MobileChat';
@@ -35,6 +35,9 @@ const MobileLayout = () => {
   const prevIsSearchEmpty = useRef(activeTab === 'search' && (!results || results.length === 0) && !loading && !error);
   const fadeOutTimeout = useRef();
   const fadeInTimeout = useRef();
+
+  // Add help modal state
+  const [showHelpModal, setShowHelpModal] = useState(false);
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
@@ -156,9 +159,57 @@ const MobileLayout = () => {
               {showUserMenu && (
                 <UserDropdownPortal>
                   <div className="user-dropdown" style={{ position: 'absolute', top: 64, right: 18 }}>
+                    <button onClick={() => setShowHelpModal(true)}>Help</button>
                     <button onClick={handleSignOut}>Sign Out</button>
                   </div>
                 </UserDropdownPortal>
+              )}
+              {showHelpModal && ReactDOM.createPortal(
+                <div className="folder-picker-modal" style={{ zIndex: 10001, background: 'rgba(39,76,119,0.32)', position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div className="modal-content" style={{ maxWidth: 380, border: 'none', borderRadius: 16, boxShadow: '0 6px 32px rgba(39,76,119,0.12)', background: 'white', margin: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                      <FaInfoCircle style={{ color: '#274C77', fontSize: 28 }} />
+                      <h2 style={{ color: '#274C77', fontWeight: 700, fontSize: 22, margin: 0 }}>How to Use PI Mobile</h2>
+                    </div>
+                    <div style={{ background: '#e7ecef', borderRadius: 10, padding: '14px 16px', marginBottom: 18, color: '#274C77', fontSize: 15, fontWeight: 500, boxShadow: '0 1px 4px rgba(39,76,119,0.04)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                        <FaRegHandPointRight style={{ color: '#457B9D', fontSize: 18 }} />
+                        <span>Swipe <b>right</b> on a document to add it to your selected folder.</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                        <FaRegHandPointLeft style={{ color: '#d32f2f', fontSize: 18 }} />
+                        <span>Swipe <b>left</b> to remove it from the selected folder.</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <FaFolderOpen style={{ color: '#274C77', fontSize: 18 }} />
+                        <span>Tap the folder indicator to change your target folder.</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18 }}>
+                        <span style={{
+                          display: 'inline-block',
+                          width: 14,
+                          height: 14,
+                          borderRadius: '50%',
+                          background: '#42a5f5',
+                          border: '2px solid #fff',
+                          boxShadow: '0 0 0 1px #ccc',
+                          boxSizing: 'border-box',
+                          verticalAlign: 'middle',
+                          flexShrink: 0,
+                          lineHeight: 1,
+                        }}></span>
+                        <span style={{ color: '#274C77', fontSize: 15 }}>
+                          <b>Folder color indicator:</b> Each colored dot shows which folders a document belongs to. The color matches the folder in your folder list.
+                        </span>
+                      </div>
+                      <div style={{ color: '#274C77', fontSize: 15, marginBottom: 18 }}>
+                        <b>Tip:</b> You can manage folders and documents seamlessly between mobile and web.
+                      </div>
+                    </div>
+                    <button onClick={() => setShowHelpModal(false)} style={{ background: '#274C77', color: 'white', fontWeight: 600, fontSize: 16, borderRadius: 8, padding: '10px 0', width: '100%', border: 'none', marginTop: 8 }}>Close</button>
+                  </div>
+                </div>,
+                document.body
               )}
             </div>
           </div>

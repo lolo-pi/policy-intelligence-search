@@ -8,7 +8,7 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000;
+  z-index: 3000;
 }
 
 .working-folder-modal {
@@ -21,6 +21,7 @@
   display: flex;
   flex-direction: column;
   animation: slideIn 0.2s ease-out;
+  z-index: 3100;
 }
 
 .working-folder-header {
@@ -272,4 +273,15 @@
 .working-folder-header button:focus, .working-folder-header button:active {
   outline: none !important;
   box-shadow: none !important;
+}
+
+.clickable {
+  cursor: pointer;
+  color: #1d3557;
+  text-decoration: none;
+  transition: text-decoration 0.15s, color 0.15s;
+}
+.clickable:hover {
+  text-decoration: underline;
+  color: #274C77;
 } 

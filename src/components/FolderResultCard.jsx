@@ -12,7 +12,11 @@ const FolderResultCard = ({ document, onRemove }) => {
     <div className="folder-result-card">
       <div className="card-header">
         <h3 className="result-title">
-          <a href={document.url} target="_blank" rel="noopener noreferrer">{document.title}</a>
+          {document.url ? (
+            <a href={document.url} target="_blank" rel="noopener noreferrer" className="clickable">{document.title}</a>
+          ) : (
+            <span className="clickable" style={{ cursor: 'pointer' }} onClick={() => console.log('Clicked document:', document.id, document.title)}>{document.title}</span>
+          )}
         </h3>
         <button 
           className="remove-button" 

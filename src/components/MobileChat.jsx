@@ -21,6 +21,14 @@ const MobileChat = () => {
   // Only transition after actual submit
   const [hasSubmitted, setHasSubmitted] = useState(false);
 
+  // If there is chat history, skip starting state
+  useEffect(() => {
+    if (chatHistory && chatHistory.length > 0) {
+      setHasSubmitted(true);
+      setInputBarTransition('bottom');
+    }
+  }, [chatHistory.length]);
+
   // Crossfade transition for input bar
   const isStartingState = !hasSubmitted && !answer && !error && !isLoading;
   const [inputBarTransition, setInputBarTransition] = useState(isStartingState ? 'centered' : 'bottom');
@@ -46,6 +54,28 @@ const MobileChat = () => {
   useEffect(() => {
     if (messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [chatHistory.length, isLoading]);
+
+  // On initial load, scroll so the last submitted question is at the top
+  useEffect(() => {
+    if (
+      chatMessagesRef.current &&
+      chatHistory &&
+      chatHistory.length > 0 &&
+      !isLoading
+    ) {
+      // Find the last user message div
+      const userMessages = chatMessagesRef.current.querySelectorAll('.message.user');
+      if (userMessages.length > 0) {
+        const lastUserMessage = userMessages[userMessages.length - 1];
+        const container = chatMessagesRef.current;
+        const containerRect = container.getBoundingClientRect();
+        const messageRect = lastUserMessage.getBoundingClientRect();
+        // Add extra offset so the question is a bit below the top
+        const extraOffset = 32;
+        container.scrollTop += (messageRect.top - containerRect.top) - extraOffset;
+      }
     }
   }, [chatHistory.length, isLoading]);
 

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useContext } from 'react';
+import React, { useState, useCallback, useContext, useRef, useLayoutEffect } from 'react';
 import { FaUser, FaFolder, FaTrash, FaEye, FaTimes, FaChevronDown, FaChevronUp, FaBars, FaAngleDoubleLeft, FaAngleDoubleRight, FaFolderPlus, FaChevronRight, FaMobileAlt } from 'react-icons/fa';
 import { useWorkingFolder } from '../context/WorkingFolderContext';
 import { JurisdictionIcon, DocumentTypeIcon } from './icons/FilterIcons';
@@ -11,6 +11,7 @@ import CreateFolderModal from './CreateFolderModal';
 import { FOLDER_COLORS, FolderIconWithIndicator } from './FolderIconWithIndicator';
 import MobileFolderIcon from './MobileFolderIcon';
 import { useFolderExpansion } from '../context/FolderExpansionContext';
+import ReactDOM from 'react-dom';
 
 const JURISDICTIONS = [
   'Colorado',
@@ -507,6 +508,20 @@ const SidebarFilters = ({
   // Add state for duplicate notification
   const [duplicateNotice, setDuplicateNotice] = useState({ folderId: null, show: false });
 
+  // Ref for user icon button
+  const userIconRef = useRef(null);
+  const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0 });
+
+  useLayoutEffect(() => {
+    if (showUserMenu && isCollapsed && userIconRef.current) {
+      const rect = userIconRef.current.getBoundingClientRect();
+      setDropdownPos({
+        top: rect.bottom + 4, // small offset
+        left: rect.left
+      });
+    }
+  }, [showUserMenu, isCollapsed]);
+
   const handleToggleCollapse = () => {
     setSidebarCollapsed(!isCollapsed);
   };
@@ -528,21 +543,38 @@ const SidebarFilters = ({
             className="user-icon"
             onClick={() => setShowUserMenu(!showUserMenu)}
             aria-label="User menu"
+            ref={userIconRef}
           >
             <FaUser />
           </button>
         </div>
         {showUserMenu && (
-          <div className="user-dropdown">
-            <div className="user-dropdown-content">
-              <div className="user-email">
-                {user?.attributes?.given_name || user?.attributes?.family_name
-                  ? `${user?.attributes?.given_name || ''} ${user?.attributes?.family_name || ''}`.trim()
-                  : user?.attributes?.email || user?.username}
-              </div>
-              <button onClick={handleSignOut}>Sign Out</button>
-            </div>
-          </div>
+          isCollapsed
+            ? ReactDOM.createPortal(
+                <div className="user-dropdown" style={{ position: 'fixed', top: dropdownPos.top, left: dropdownPos.left, zIndex: 4000 }}>
+                  <div className="user-dropdown-content">
+                    <div className="user-email">
+                      {user?.attributes?.given_name || user?.attributes?.family_name
+                        ? `${user?.attributes?.given_name || ''} ${user?.attributes?.family_name || ''}`.trim()
+                        : user?.attributes?.email || user?.username}
+                    </div>
+                    <button onClick={handleSignOut}>Sign Out</button>
+                  </div>
+                </div>,
+                document.body
+              )
+            : (
+                <div className="user-dropdown">
+                  <div className="user-dropdown-content">
+                    <div className="user-email">
+                      {user?.attributes?.given_name || user?.attributes?.family_name
+                        ? `${user?.attributes?.given_name || ''} ${user?.attributes?.family_name || ''}`.trim()
+                        : user?.attributes?.email || user?.username}
+                    </div>
+                    <button onClick={handleSignOut}>Sign Out</button>
+                  </div>
+                </div>
+              )
         )}
       </div>
       {!isCollapsed && (
@@ -713,85 +745,21 @@ const SidebarFilters = ({
                 {/* Removed duplicate working-folder-list. Mobile Folder docs now only appear in the Folders section. */}
               </div>
               {/* New Folders header and create button */}
-              {folders.length > 0 || instanceId !== 'copilot-page' ? (
-                <div className="folders-header">
-                  <span>Folders</span>
-                  {instanceId !== 'copilot-page' && (
-                    <button 
-                      className="create-folder-button"
-                      onClick={() => {
-                        console.log("Create folder button clicked in SidebarFilters");
-                        setIsCreateFolderModalOpen(true);
-                      }}
-                      title="Create new folder"
-                    >
-                      +
-                    </button>
-                  )}
-                </div>
-              ) : null}
+              <div className="sidebar-header">
+                <span className="sidebar-title" style={{ fontSize: 22 }}>Folders</span>
+                <button 
+                  className="create-folder-button"
+                  onClick={() => {
+                    console.log("Create folder button clicked in SidebarFilters");
+                    setIsCreateFolderModalOpen(true);
+                  }}
+                  title="Create new folder"
+                >
+                  +
+                </button>
+              </div>
               {/* Folders list */}
               <div className="folders-list">
-                {/* Mobile Folder at the top */}
-                <div className="folder-item mobile-folder-item" style={{ marginBottom: 8 }}>
-                  <div
-                    className={`folder-header${isMobileFolderExpanded ? '' : ' collapsed'}`}
-                    style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}
-                    onClick={() => setIsMobileFolderExpanded(exp => !exp)}
-                  >
-                    <button
-                      className="toggle-folder-button"
-                      onClick={e => { e.stopPropagation(); setIsMobileFolderExpanded(exp => !exp); }}
-                      aria-label={isMobileFolderExpanded ? 'Collapse Mobile Folder' : 'Expand Mobile Folder'}
-                      style={{ marginRight: 8, background: 'none', border: 'none', cursor: 'pointer', color: '#457b9d', fontSize: 14 }}
-                    >
-                      {isMobileFolderExpanded ? <FaChevronDown /> : <FaChevronRight />}
-                    </button>
-                    <MobileFolderIcon size={40} count={workingFolderDocs.length} style={{ marginRight: 4, paddingTop: 7, paddingBottom: 0 }} />
-                    <span className="folder-name" style={{ fontWeight: 600, color: '#274C77' }}>Mobile Folder</span>
-                    <span className="folder-actions">
-                      {instanceId !== 'copilot-page' && (
-                        <button
-                          className="view-folder-button"
-                          onClick={e => {
-                            e.stopPropagation();
-                            setIsWorkingFolderOpen(true);
-                          }}
-                          title="View Mobile Folder contents"
-                        >
-                          <FaEye />
-                        </button>
-                      )}
-                    </span>
-                  </div>
-                  {isMobileFolderExpanded && workingFolderDocs.length > 0 && (
-                    <div className="folder-documents">
-                      {workingFolderDocs.map(doc => (
-                        <div
-                          key={doc.id}
-                          className="folder-doc-item"
-                          draggable
-                          onDragStart={e => {
-                            e.dataTransfer.setData('application/x-doc-id', doc.id);
-                            e.dataTransfer.setData('application/x-source-folder-id', '');
-                            setDraggedDocId(doc.id);
-                          }}
-                          onDragEnd={() => setDraggedDocId(null)}
-                          style={{ cursor: 'grab' }}
-                        >
-                          <span className="doc-title">{doc.title}</span>
-                          <button
-                            className="remove-doc-button"
-                            onClick={() => removeFromWorkingFolder(doc.id)}
-                            title="Remove from Mobile Folder"
-                          >
-                            <FaTrash />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
                 {folders.length > 0 && (
                   <>
                     {folders.map((folder, idx) => {
@@ -899,18 +867,16 @@ const SidebarFilters = ({
                               {folder.name}
                             </span>
                             <span className="folder-actions">
-                              {instanceId !== 'copilot-page' && (
-                                <button
-                                  className="view-folder-button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setViewingFolder(folder);
-                                  }}
-                                  title="View folder contents"
-                                >
-                                  <FaEye />
-                                </button>
-                              )}
+                              <button
+                                className="view-folder-button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setViewingFolder(folder);
+                                }}
+                                title="View folder contents"
+                              >
+                                <FaEye />
+                              </button>
                               <button
                                 className="delete-folder-button"
                                 onClick={(e) => {
@@ -1090,24 +1056,29 @@ const SidebarFilters = ({
               <CreateFolderModal
                 isOpen={isCreateFolderModalOpen}
                 onClose={() => setIsCreateFolderModalOpen(false)}
-                onCreateFolder={createFolderRemote}
+                onCreateFolder={async (folderName) => {
+                  console.log(`Creating folder: ${folderName}`);
+                  try {
+                    const newFolder = await createFolderRemote(folderName);
+                    console.log("Created folder remotely:", newFolder);
+                    setIsCreateFolderModalOpen(false);
+                  } catch (error) {
+                    console.error("Error creating folder remotely:", error);
+                    setIsCreateFolderModalOpen(false);
+                  }
+                }}
               />
             </>
           )}
           {/* Folder view modal */}
-          {viewingFolder && (
-            (() => {
-              const latestFolder = folders.find(f => f.id === viewingFolder.id);
-              return (
-                <WorkingFolderView
-                  isOpen={!!viewingFolder}
-                  onClose={() => setViewingFolder(null)}
-                  documents={latestFolder ? latestFolder.documents : []}
-                  title={latestFolder ? latestFolder.name : viewingFolder.name}
-                  folder={latestFolder || viewingFolder}
-                />
-              );
-            })()
+          {viewingFolder && ReactDOM.createPortal(
+            <WorkingFolderView
+              isOpen={!!viewingFolder}
+              onClose={() => setViewingFolder(null)}
+              documents={viewingFolder.documents || []}
+              folder={viewingFolder}
+            />,
+            document.body
           )}
         </>
       )}

@@ -4,7 +4,7 @@ import { useSearchPage } from '../context/SearchPageContext';
 import { useWorkingFolder } from '../context/WorkingFolderContext';
 import { FaFolderPlus, FaFolderMinus, FaThLarge, FaList, FaGlobe, FaChevronDown, FaChevronLeft, FaChevronRight, FaChevronUp } from 'react-icons/fa';
 import CreateNewFolderIcon from '@mui/icons-material/CreateNewFolder';
-import dynamicSearchIcon from '../assets/dynamic_search_ii.svg';
+import searchIcon from '../assets/Search-Icon.png';
 import './DynamicSearch.css';
 import CreateFolderModal from './CreateFolderModal';
 
@@ -386,13 +386,14 @@ const DynamicSearch = () => {
       
       <div className="search-input-container">
         <form onSubmit={handleSubmit}>
-          <img src={dynamicSearchIcon} alt="Dynamic Search" className="search-input-icon" />
+          <img src={searchIcon} alt="Dynamic Search" className="search-input-icon" />
           <input 
             type="text" 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Enter your search query..."
             className="dynamic-search-input"
+            style={{ paddingLeft: 44 }}
           />
           <button type="submit" className="dynamic-search-button">
             Search

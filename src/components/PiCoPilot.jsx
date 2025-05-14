@@ -7,13 +7,15 @@ import SidebarFilters from './SidebarFilters';
 import { useSearchPage } from '../context/SearchPageContext';
 import { useSidebar } from '../context/SidebarContext';
 import { useLocation } from 'react-router-dom';
+import { useChat } from '../context/ChatContext';
 
 // Import the AI avatar image
 import aiAvatar from '../assets/AI-technology.png';
+import sourcesIcon from '../assets/sources_icon.svg';
 
 const PiCoPilot = () => {
   const { results } = useSearchPage();
-  const [showHistory, setShowHistory] = useState(true);
+  const { showHistory, setShowHistory } = useChat();
   const { sidebarCollapsed, resetSidebarAnimation } = useSidebar();
   const location = useLocation();
 
@@ -44,6 +46,15 @@ const PiCoPilot = () => {
     }
   ];
 
+  const [showSourcesPanel, setShowSourcesPanel] = useState(() => {
+    const stored = localStorage.getItem('showSourcesPanel');
+    return stored === null ? true : stored === 'true';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('showSourcesPanel', showSourcesPanel);
+  }, [showSourcesPanel]);
+
   const handleFilterChange = (filters) => {
     // Handle filter changes if needed
     console.log('Filters changed:', filters);
@@ -67,8 +78,15 @@ const PiCoPilot = () => {
         <div className={`copilot-container${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}>
           <div className="copilot-content">
             {showHistory && <MessageHistory onClose={() => setShowHistory(false)} />}
-            <PiCoPilotChat showHistory={showHistory} setShowHistory={setShowHistory} showToggleButton={!showHistory} />
-            <SourcesPanel />
+            <PiCoPilotChat
+              showHistory={showHistory}
+              setShowHistory={setShowHistory}
+              showToggleButton={!showHistory}
+              showSourcesPanel={showSourcesPanel}
+              setShowSourcesPanel={setShowSourcesPanel}
+              showSourcesToggleButton={!showSourcesPanel}
+            />
+            <SourcesPanel showSourcesPanel={showSourcesPanel} setShowSourcesPanel={setShowSourcesPanel} />
           </div>
         </div>
       </div>

@@ -112,17 +112,76 @@ const MobileFoldersPage = ({ isOpen, onClose }) => {
       </div>
       <div style={{ padding: '18px', flex: 1, overflowY: 'auto', background: '#f8f9fa' }}>
         {showCreateInput && (
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            marginBottom: 16,
+            borderRadius: 8,
+            border: '1.5px solid #e0e6ed',
+            padding: '4px 8px 4px 12px',
+            gap: 18,
+            background: 'transparent',
+            boxShadow: 'none',
+          }}>
             <input
               type="text"
               value={newFolderName}
               onChange={e => setNewFolderName(e.target.value)}
-              placeholder="New folder name"
-              style={{ flex: 1, padding: 8, borderRadius: 6, border: '1px solid #ccc', marginRight: 8 }}
+              placeholder="New folder name..."
+              style={{
+                flex: 1,
+                border: 'none',
+                outline: 'none',
+                background: 'transparent',
+                fontSize: 16,
+                color: '#274C77',
+                padding: '8px 0',
+                fontWeight: 500,
+                letterSpacing: 0.1,
+              }}
               autoFocus
+              onFocus={e => e.target.parentNode.style.boxShadow = '0 2px 12px rgba(69,123,157,0.10)'}
+              onBlur={e => e.target.parentNode.style.boxShadow = '0 1.5px 6px rgba(39,76,119,0.06)'}
+              onKeyDown={e => { if (e.key === 'Enter') handleCreateFolder(); if (e.key === 'Escape') setShowCreateInput(false); }}
             />
-            <button onClick={handleCreateFolder} style={{ background: '#457b9d', color: 'white', border: 'none', borderRadius: 6, padding: '8px 12px', fontWeight: 600, cursor: 'pointer', WebkitTapHighlightColor: 'transparent', outline: 'none' }}>Create</button>
-            <button onClick={() => setShowCreateInput(false)} style={{ background: 'none', border: 'none', color: '#888', fontSize: 20, marginLeft: 4, cursor: 'pointer', WebkitTapHighlightColor: 'transparent', outline: 'none' }}><FaTimes /></button>
+            <button
+              onClick={handleCreateFolder}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#218838',
+                fontSize: 22,
+                cursor: 'pointer',
+                WebkitTapHighlightColor: 'transparent',
+                outline: 'none',
+                padding: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              aria-label="Create folder"
+            >
+              <FaCheck />
+            </button>
+            <button
+              onClick={() => setShowCreateInput(false)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#b0b8c1',
+                fontSize: 22,
+                cursor: 'pointer',
+                WebkitTapHighlightColor: 'transparent',
+                outline: 'none',
+                padding: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              aria-label="Cancel create folder"
+            >
+              <FaTimes />
+            </button>
           </div>
         )}
         {folders && folders.length > 0 ? (
@@ -157,8 +216,8 @@ const MobileFoldersPage = ({ isOpen, onClose }) => {
                     ) : (
                       <FaChevronRight style={{ color: '#b6c6e3', fontSize: '16px', marginRight: 2 }} />
                     )}
-                    <FolderIconWithIndicator indicatorColor={FOLDER_COLORS[idx % FOLDER_COLORS.length]} size={54} count={folder.documents?.length || 0} />
-                    <span style={{ fontWeight: 700, fontSize: 20, marginLeft: 0 }}>{folder.name}</span>
+                    <FolderIconWithIndicator indicatorColor={FOLDER_COLORS[idx % FOLDER_COLORS.length]} size={48} count={folder.documents?.length || 0} />
+                    <span style={{ fontWeight: 500, fontSize: 19, marginLeft: 0 }}>{folder.name}</span>
                   </div>
                   {expandedFolderIds.includes(folder.id) && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
@@ -191,9 +250,17 @@ const MobileFoldersPage = ({ isOpen, onClose }) => {
                 </div>
                 {expandedFolderIds.includes(folder.id) && folder.documents && folder.documents.length > 0 && (
                   <ul style={{ listStyle: 'none', padding: '0 0 0 0', margin: 0, background: '#e8f0fe', borderRadius: '0 0 8px 8px' }}>
-                    {folder.documents.map(doc => (
-                      <li key={doc.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid #dbeafe', fontSize: 15, color: '#274C77' }}>
-                        <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 180 }}>{doc.title}</span>
+                    {folder.documents.map((doc, docIdx) => (
+                      <li key={doc.id} style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '14px 16px',
+                        borderBottom: docIdx !== folder.documents.length - 1 ? '1px solid #dbeafe' : 'none',
+                        fontSize: 15,
+                        color: '#274C77'
+                      }}>
+                        <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{doc.title}</span>
                         <button onClick={() => {
                           if (window.confirm('Are you sure you want to remove this document from the folder?')) {
                             removeFromFolder(doc.id, folder.id);
@@ -218,7 +285,7 @@ const MobileFoldersPage = ({ isOpen, onClose }) => {
           folder={folders.find(f => f.id === viewingFolder?.id) || viewingFolder}
         />
       </div>
-      <style jsx global>{`
+      <style>{`
         @keyframes spin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
