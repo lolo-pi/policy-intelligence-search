@@ -8,7 +8,8 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000;
+  z-index: 10000;
+  pointer-events: all;
 }
 
 .create-folder-modal {
@@ -136,4 +137,12 @@
     transform: translateY(0);
     opacity: 1;
   }
+}
+
+/* Ensure input focus doesn't bleed through to elements behind the modal */
+.create-folder-modal input:focus {
+  outline: none;
+  border-color: #457b9d !important;
+  box-shadow: 0 0 0 2px rgba(69, 123, 157, 0.2) !important;
+  z-index: 10001;
 } 
