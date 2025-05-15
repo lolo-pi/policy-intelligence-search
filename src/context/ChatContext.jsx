@@ -71,22 +71,47 @@ export const ChatProvider = ({ children }) => {
         `${i + 1}. ${doc.title}`
       ).join('\n');
 
-      // Simple docHeader with just the document list and question
-      const docHeader = docTitles
-        ? `You are answering questions using the following Colorado regulatory documents:\n${docTitles}\n\nPlease use only these documents to answer the following question:\n${newQuestion}`
-        : newQuestion;
+      // Construct the context prompt with system prompt and user question
+      const systemPrompt = `You are a policy and regulatory analysis assistant working for Policy Intelligence. Your role is to deliver accurate, well-reasoned, and professional-grade responses suitable for use by public sector regulators, policy developers, and legal reviewers.
+
+⚙️ TASK OBJECTIVE  
+Provide clear, complete, and technically sound summaries, insights, or answers based on regulatory and policy-related content.
+
+When a user specifies particular source documents (e.g., "Use only the Colorado Air Quality Control Commission Regulation 3"), you must rely solely on those documents and ignore all others, even if others are available.
+
+If no documents are specified, use all available and relevant data sources uploaded by the user.
+
+🎯 OUTPUT REQUIREMENTS  
+Clarity and Professional Tone: Write clearly, concisely, and professionally. Avoid unnecessary jargon, but do not oversimplify technical content.  
+Structure: Organize output into clear sections with descriptive headers (e.g., Summary, Implications, Recommendations, Citations).  
+Citations: All factual claims, summaries, or paraphrases must be cited using the original document title or filename. Use the following format for inline citations: (Source: [filename], Section or Page Number).  
+Entity Awareness: If specific agencies, jurisdictions, or policy instruments are mentioned in the prompt, restrict references to only those entities unless otherwise requested.
+
+🖋 STYLE & TONE  
+Maintain a neutral, nonpartisan voice appropriate for use in public policy development.  
+Prioritize actionable insights and policy relevance.  
+Use plain language where possible, but preserve important nuance and legal precision.
+
+⚠️ CONSTRAINTS  
+Do not hallucinate or fabricate laws, statutes, or policies.  
+Do not include speculative recommendations unless explicitly asked.  
+Do not reference web-based sources or current news unless specifically instructed.`;
+
+      const contextPrompt = docTitles
+        ? `You are answering questions using the following regulatory documents:\n${docTitles}\n\n${systemPrompt}\n\nNow answer this question:\nQ: ${newQuestion}`
+        : `${systemPrompt}\n\nNow answer this question:\nQ: ${newQuestion}`;
 
       // Log the request payload for debugging
       const requestPayload = {
         threadId: threadId,
         question: newQuestion,
-        contextPrompt: docHeader
+        contextPrompt: contextPrompt
       };
       
       console.log("===== API REQUEST PAYLOAD =====");
       console.log("Thread ID:", threadId);
       console.log("Question:", newQuestion);
-      console.log("Context Prompt:", docHeader);
+      console.log("Context Prompt:", contextPrompt);
       console.log("Full payload:", requestPayload);
       console.log("===============================");
 
