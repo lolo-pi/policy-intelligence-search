@@ -517,4 +517,38 @@ html, body {
 
 .password-toggle:focus {
   outline: none;
+}
+
+.terms-text {
+  font-size: 0.7rem;
+  color: #666;
+  margin: 0;
+  text-align: left;
+  line-height: 1.4;
+  padding: 0 10px;
+  padding-bottom: 10px;
+  white-space: normal;
+  max-width: 100%;
+}
+
+.terms-text a {
+  color: #457b9d;
+  text-decoration: none;
+}
+
+.terms-text a:hover {
+  text-decoration: underline;
+}
+
+/* Dark mode styles */
+:root.dark-mode .terms-text {
+  color: #999;
+}
+
+:root.dark-mode .terms-text a {
+  color: #4a9eff;
+}
+
+:root.dark-mode .terms-text a:hover {
+  color: #6bb5ff;
 } 
