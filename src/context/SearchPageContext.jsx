@@ -38,6 +38,7 @@ const jurisdictionMapping = {
   'Kentucky': 'Kentucky',
   'Alaska': 'Alaska',
   'Arkansas': 'Arkansas',
+  'Minnesota': 'Minnesota',
   'Amador APCD': 'Amador_APCD',
   'Antelope Valley AQMD': 'Antelope_Valley_AQMD',
   'Butte County AQMD': 'Butte_County_AQMD',
@@ -435,8 +436,21 @@ export const SearchPageProvider = ({ children }) => {
     const originalActiveKeys = Object.keys(newFilters).filter(key => newFilters[key] === true);
     console.log('Original active keys:', originalActiveKeys);
 
+    // Add requested debugging code
+    console.log("Jurisdiction mapping:", jurisdictionMapping);
+    console.log("Active filters:", processedFilters);
+    console.log("Filtered jurisdiction keys:", Object.keys(processedFilters).filter(k => processedFilters[k]));
+    
     // Get all active jurisdiction and document type filters
     const jurisdictionFilters = activeFilterKeys.filter(key => JURISDICTIONS.includes(key));
+    
+    // Add more debugging to see what's filtered out
+    console.log("JURISDICTIONS constant:", JURISDICTIONS);
+    console.log("Jurisdiction keys before filtering:", activeFilterKeys);
+    console.log("Jurisdiction keys after filtering:", jurisdictionFilters);
+    console.log("Minnesota present in JURISDICTIONS?", JURISDICTIONS.includes('Minnesota'));
+    console.log("Minnesota active in filters?", activeFilterKeys.includes('Minnesota'));
+    console.log("Minnesota included in jurisdictionFilters?", jurisdictionFilters.includes('Minnesota'));
     
     // For document types, we need to check both with the original format (preserving spaces)
     // and with the processed format (spaces replaced with underscores)
@@ -464,10 +478,15 @@ export const SearchPageProvider = ({ children }) => {
     const kendraJurisdictionFilters = jurisdictionFilters.map(jurisdiction => {
       // Always convert from underscores to spaces for Kendra API
       // Either use the pre-defined mapping or simply replace underscores with spaces
+      if (jurisdiction === 'Minnesota') {
+        console.log('Found Minnesota in jurisdictionFilters, mapping to:', reverseJurisdictionMapping[jurisdiction] || jurisdiction.replace(/_/g, ' '));
+      }
       return reverseJurisdictionMapping[jurisdiction] || jurisdiction.replace(/_/g, ' ');
     });
 
     console.log('Converted jurisdiction filters for Kendra API:', kendraJurisdictionFilters);
+    console.log('Minnesota selected?', jurisdictionFilters.includes('Minnesota'));
+    console.log('Active Minnesota filter?', filters['Minnesota']);
 
     // If we have filters, perform a new search with them
     if (jurisdictionFilters.length > 0 || documentTypeFilters.length > 0) {
