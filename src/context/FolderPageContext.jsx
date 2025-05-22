@@ -55,7 +55,8 @@ const jurisdictions = [
   'Washington',
   'Arizona',
   'New_York',
-  'Sacramento_AQMD'
+  'Sacramento_AQMD',
+  'Minnesota'
 ];
 
 // Mapping between Kendra format (with spaces) and code format (with underscores)
@@ -69,7 +70,8 @@ const jurisdictionMapping = {
   'Texas': 'Texas',
   'Washington': 'Washington',
   'Arizona': 'Arizona',
-  'New York': 'New_York'
+  'New York': 'New_York',
+  'Minnesota': 'Minnesota'
 };
 
 // Reverse mapping for display and Kendra searches
@@ -90,7 +92,8 @@ export const FolderPageProvider = ({ children }) => {
     Washington: false,
     Arizona: false,
     'New_York': false,
-    'Sacramento_AQMD': false
+    'Sacramento_AQMD': false,
+    'Minnesota': false
   });
   const [error, setError] = useState(null);
   const [jurisdictionResults, setJurisdictionResults] = useState({});
@@ -120,6 +123,15 @@ export const FolderPageProvider = ({ children }) => {
     // Convert jurisdiction to Kendra format for the API call only
     const kendraJurisdiction = jurisdiction ? 
       reverseJurisdictionMapping[jurisdiction] || jurisdiction.replace(/_/g, ' ') : null;
+    
+    // Add Minnesota-specific debugging
+    if (jurisdiction === 'Minnesota') {
+      console.log('Processing Minnesota in queryWithRetry:', {
+        originalJurisdiction: jurisdiction,
+        mappedValue: reverseJurisdictionMapping[jurisdiction],
+        finalKendraJurisdiction: kendraJurisdiction
+      });
+    }
     
     // Log the actual parameters being sent to the API
     console.log(`Sending search request with:
@@ -272,7 +284,8 @@ export const FolderPageProvider = ({ children }) => {
         Washington: false,
         Arizona: false,
         'New_York': false,
-        'Sacramento_AQMD': false
+        'Sacramento_AQMD': false,
+        'Minnesota': false
       });
       setError(null);
       seenDocuments.current = {};
@@ -447,6 +460,9 @@ export const FolderPageProvider = ({ children }) => {
     console.log('Current jurisdiction results:', jurisdictionResults);
     console.log('Filter settings being applied:', newFilters);
     
+    // Check if Minnesota filter is present
+    console.log('Minnesota filter value:', newFilters['Minnesota']);
+    
     // Extract jurisdictions and document types from the filters
     const selectedJurisdictionsList = Object.entries(newFilters)
       .filter(([key, value]) => value && jurisdictions.includes(key))
@@ -457,6 +473,7 @@ export const FolderPageProvider = ({ children }) => {
       .map(([key]) => key)[0] || null;
 
     console.log('Selected jurisdictions:', selectedJurisdictionsList);
+    console.log('Minnesota in selected jurisdictions?', selectedJurisdictionsList.includes('Minnesota'));
     console.log('Selected document type:', selectedDocType);
     
     // Update selected jurisdictions
@@ -531,6 +548,15 @@ export const FolderPageProvider = ({ children }) => {
       return [];
     }
 
+    // Debug Minnesota filtering
+    if (jurisdiction === 'Minnesota') {
+      console.log('Filtering for Minnesota jurisdiction:', {
+        selectedJurisdictions,
+        hasMinnesota: selectedJurisdictions.includes('Minnesota'),
+        documentsCount: documents.length
+      });
+    }
+
     // If no filters are active, return all documents
     if (!activeDocType && selectedJurisdictions.length === 0) {
       return documents;
@@ -540,6 +566,14 @@ export const FolderPageProvider = ({ children }) => {
       // Check jurisdiction filter
       if (selectedJurisdictions.length > 0) {
         if (!jurisdiction || !selectedJurisdictions.includes(jurisdiction)) {
+          // Debug Minnesota filtering rejection
+          if (jurisdiction === 'Minnesota') {
+            console.log('Minnesota document filtered out due to jurisdiction mismatch:', {
+              jurisdiction,
+              selectedJurisdictions,
+              includesMinnesota: selectedJurisdictions.includes('Minnesota')
+            });
+          }
           return false;
         }
       }

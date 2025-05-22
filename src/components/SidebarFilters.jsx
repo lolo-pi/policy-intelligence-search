@@ -38,6 +38,7 @@ const JURISDICTIONS = [
   'Lassen_County_APCD',
   'Mariposa_County_APCD',
   'Mendocino_County_AQMD',
+  'Minnesota',
   'Modoc_County_APCD',
   'Mojave_Desert_AQMD',
   'Monterey_Bay_Unified_APCD',

@@ -54,6 +54,7 @@ export const JURISDICTIONS = [
   'Maryland',
   'Massachusetts',
   'Michigan',
+  'Minnesota',
   'Mississippi',
   'Nevada',
   'New_Mexico-Albuquerque',
