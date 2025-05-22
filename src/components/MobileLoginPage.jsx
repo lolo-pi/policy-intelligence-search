@@ -360,6 +360,17 @@ const MobileLoginPage = () => {
       )}
       {!isLogin && (
         <>
+          <div className="terms-text">
+            By clicking Sign Up, you agree to our{' '}
+            <a href="https://www.policyintelligence.ai/termsofuse" target="_blank" rel="noopener noreferrer">
+              Terms of Use
+            </a>{' '}
+            &{' '}
+            <a href="https://www.policyintelligence.ai/privacypolicy" target="_blank" rel="noopener noreferrer">
+              Privacy Policy
+            </a>
+            .
+          </div>
           <button type="submit" className="login-button">
             Sign Up
           </button>

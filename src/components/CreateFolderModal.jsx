@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import ReactDOM from 'react-dom';
 import { FaTimes } from 'react-icons/fa';
 import './CreateFolderModal.css';
 
@@ -17,9 +18,13 @@ const CreateFolderModal = ({ isOpen, onClose, onCreateFolder }) => {
     }
   };
 
-  return (
-    <div className="create-folder-overlay">
-      <div className="create-folder-modal">
+  const preventPropagation = (e) => {
+    e.stopPropagation();
+  };
+
+  const modalContent = (
+    <div className="create-folder-overlay" onClick={onClose}>
+      <div className="create-folder-modal" onClick={preventPropagation}>
         <div className="create-folder-header">
           <h3>Create New Folder</h3>
           <button className="close-button" onClick={onClose}>
@@ -54,6 +59,8 @@ const CreateFolderModal = ({ isOpen, onClose, onCreateFolder }) => {
       </div>
     </div>
   );
+
+  return ReactDOM.createPortal(modalContent, document.body);
 };
 
 export default CreateFolderModal; 
