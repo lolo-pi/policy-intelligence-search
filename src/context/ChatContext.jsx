@@ -17,23 +17,18 @@ export const ChatProvider = ({ children }) => {
   const [activeThreadIndex, setActiveThreadIndex] = useState(null);
   const [lastQuestion, setLastQuestion] = useState('');
   const [threadId, setThreadId] = useState('');
-<<<<<<< HEAD
   const [selectedFolder, setSelectedFolder] = useState(null);
-=======
   const [showHistory, setShowHistory] = useState(() => {
     const stored = localStorage.getItem(SHOW_HISTORY_KEY);
     return stored === null ? false : stored === 'true';
   });
->>>>>>> 78fc5902f5ca9c5e2fb8e7dd49566a83079bfb88
 
-  // Load chat history and threadId from localStorage on mount
   useEffect(() => {
     const stored = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (stored) {
       setChatHistory(JSON.parse(stored));
     }
-    
-    // Initialize or load threadId
+
     const storedThreadId = localStorage.getItem(THREAD_ID_KEY);
     if (storedThreadId) {
       setThreadId(storedThreadId);
@@ -44,12 +39,10 @@ export const ChatProvider = ({ children }) => {
     }
   }, []);
 
-  // Persist chat history to localStorage
   useEffect(() => {
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(chatHistory));
   }, [chatHistory]);
 
-  // Persist threadId to localStorage
   useEffect(() => {
     if (threadId) {
       localStorage.setItem(THREAD_ID_KEY, threadId);
@@ -65,25 +58,41 @@ export const ChatProvider = ({ children }) => {
 
     setIsLoading(true);
     setError(null);
-    
+
     try {
-      // Create document list if folder is selected
+      const recentHistory = chatHistory
+        .map(entry => `User: ${entry.question}\nAssistant: ${entry.answer}`)
+        .join('\n\n');
+
       const docTitles = selectedFolder?.documents?.map((doc, i) =>
         `${i + 1}. ${doc.title}`
       ).join('\n');
 
-      // Simple docHeader with just the document list and question
-      const docHeader = docTitles
-        ? `You are answering questions using the following Colorado regulatory documents:\n${docTitles}\n\nPlease use only these documents to answer the following question:\n${newQuestion}`
-        : newQuestion;
+      const docHeaderParts = [];
 
-      // Log the request payload for debugging
+      docHeaderParts.push(
+        `You are a regulatory policy assistant helping users understand air quality rules and emissions requirements.\n` +
+        `Use only the following documents to answer questions${selectedFolder ? ' about ' + selectedFolder.name : ''}:`
+      );
+
+      if (docTitles) {
+        docHeaderParts.push(`${docTitles}`);
+      }
+
+      if (recentHistory) {
+        docHeaderParts.push(`The conversation so far:\n${recentHistory}`);
+      }
+
+      docHeaderParts.push(`User: ${newQuestion}`);
+
+      const docHeader = docHeaderParts.join('\n\n');
+
       const requestPayload = {
         threadId: threadId,
         question: newQuestion,
         contextPrompt: docHeader
       };
-      
+
       console.log("===== API REQUEST PAYLOAD =====");
       console.log("Thread ID:", threadId);
       console.log("Question:", newQuestion);
@@ -105,11 +114,10 @@ export const ChatProvider = ({ children }) => {
 
       const data = await response.json();
       setAnswer(data.answer);
-      
-      // Deduplicate citations by pi_url or title
+
       const uniqueCitations = [];
       const seenUrls = new Set();
-      
+
       if (data.citations && data.citations.length > 0) {
         data.citations.forEach(citation => {
           const uniqueId = citation.pi_url || citation.title;
@@ -119,25 +127,22 @@ export const ChatProvider = ({ children }) => {
           }
         });
       }
-      
+
       setCitations(uniqueCitations);
 
-      // Add to chat history and cap at 6 entries
       setChatHistory(prev => {
         const newEntry = {
-          question: newQuestion, // Store original question for display
+          question: newQuestion,
           answer: data.answer,
           citations: uniqueCitations,
           timestamp: new Date().toISOString()
         };
 
-        // Keep the most recent 6 entries (or all if less than 6)
         const limitedHistory = [...prev, newEntry].slice(-6);
         setActiveThreadIndex(limitedHistory.length - 1);
         return limitedHistory;
       });
 
-      // Clear the question input after successful submission
       setQuestion('');
       setLastQuestion(newQuestion);
 
@@ -153,7 +158,6 @@ export const ChatProvider = ({ children }) => {
     setAnswer('');
     setCitations([]);
     setError(null);
-    // Generate new threadId when clearing chat
     const newThreadId = uuidv4();
     setThreadId(newThreadId);
     localStorage.setItem(THREAD_ID_KEY, newThreadId);
@@ -178,13 +182,10 @@ export const ChatProvider = ({ children }) => {
       lastQuestion,
       setLastQuestion,
       threadId,
-<<<<<<< HEAD
       selectedFolder,
-      setSelectedFolder
-=======
+      setSelectedFolder,
       showHistory,
       setShowHistory
->>>>>>> 78fc5902f5ca9c5e2fb8e7dd49566a83079bfb88
     }}>
       {children}
     </ChatContext.Provider>
@@ -197,4 +198,4 @@ export const useChat = () => {
     throw new Error('useChat must be used within a ChatProvider');
   }
   return context;
-}; 
+};
