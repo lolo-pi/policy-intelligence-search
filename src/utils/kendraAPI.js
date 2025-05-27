@@ -1,5 +1,9 @@
 /**
  * Kendra Search API utilities
+ * 
+ * IMPORTANT: Document type filtering uses the 'aq_type' field from Kendra document attributes
+ * as the primary source of document type information. This field is used in UI filters and facet counts.
+ * As a fallback, the '_category' field is also checked to maintain compatibility with older documents.
  */
 
 const API_ENDPOINT = 'https://gbgi989gbe.execute-api.us-west-2.amazonaws.com/sbx/search';
@@ -103,7 +107,18 @@ export const searchKendra = async (query = '', jurisdiction = null, documentType
     // Create document type filter if specified
     let documentTypeFilter = null;
     if (processedDocType) {
-      documentTypeFilter = {
+      // Create filter for aq_type (primary)
+      const aqTypeFilter = {
+        EqualsTo: {
+          Key: "aq_type",
+          Value: {
+            StringValue: processedDocType
+          }
+        }
+      };
+      
+      // Create filter for _category (fallback)
+      const categoryFilter = {
         EqualsTo: {
           Key: "_category",
           Value: {
@@ -111,6 +126,12 @@ export const searchKendra = async (query = '', jurisdiction = null, documentType
           }
         }
       };
+      
+      // Use OR condition to match either aq_type or _category
+      documentTypeFilter = {
+        OrAllFilters: [aqTypeFilter, categoryFilter]
+      };
+      
       console.log(`Created document type filter:`, JSON.stringify(documentTypeFilter, null, 2));
       
       // Extra check for " Source Report" to ensure space is preserved after JSON serialization
@@ -208,6 +229,13 @@ export const searchKendra = async (query = '', jurisdiction = null, documentType
       // Still get document type counts from the main Kendra endpoint
       requestBody.facetSummary = true;
       
+      // Add Facets to include both _category and aq_type
+      requestBody.Facets = [
+        { DocumentAttributeKey: 'jurisdiction' },
+        { DocumentAttributeKey: 'aq_type' },
+        { DocumentAttributeKey: '_category' }
+      ];
+      
       // Ensure Source Report handling is consistent for facet requests
       if (processedDocType === " Source Report") {
         console.log("Adding fallback _category field for Source Report in facet request");
@@ -251,15 +279,29 @@ export const searchKendra = async (query = '', jurisdiction = null, documentType
       if (Array.isArray(data)) {
         console.log("Processing document type data from array format");
         data.forEach(facet => {
-          // Process document type counts
-          if (facet.DocumentAttributeKey === '_category' && 
+          // Process document type counts from aq_type attribute (prioritize this)
+          if (facet.DocumentAttributeKey === 'aq_type' && 
               Array.isArray(facet.DocumentAttributeValueCountPairs)) {
             facet.DocumentAttributeValueCountPairs.forEach(pair => {
               if (pair.DocumentAttributeValue && pair.DocumentAttributeValue.StringValue) {
                 docTypeCounts[pair.DocumentAttributeValue.StringValue] = pair.Count;
               }
             });
-            console.log("Document type counts:", docTypeCounts);
+            console.log("Document type counts from aq_type:", docTypeCounts);
+          }
+          
+          // Process document type counts from _category as fallback
+          if (facet.DocumentAttributeKey === '_category' && 
+              Array.isArray(facet.DocumentAttributeValueCountPairs)) {
+            facet.DocumentAttributeValueCountPairs.forEach(pair => {
+              if (pair.DocumentAttributeValue && pair.DocumentAttributeValue.StringValue) {
+                // Only add if not already set by aq_type
+                if (!docTypeCounts[pair.DocumentAttributeValue.StringValue]) {
+                  docTypeCounts[pair.DocumentAttributeValue.StringValue] = pair.Count;
+                }
+              }
+            });
+            console.log("Document type counts after adding _category:", docTypeCounts);
           }
         });
       } else {
@@ -446,14 +488,24 @@ export const transformKendraResults = (kendraResponse) => {
     let documentType = null;
     let typeSource = 'unknown';
     
-    // Check for DocumentAttributes array - prioritize _category as that's what the Lambda uses
+    // Check for DocumentAttributes array - prioritize aq_type as that's what Kendra provides
     if (Array.isArray(item.DocumentAttributes)) {
-      // First look specifically for _category
-      const categoryAttr = item.DocumentAttributes.find(attr => attr.Key === '_category');
-      if (categoryAttr && categoryAttr.Value && categoryAttr.Value.StringValue) {
-        documentType = categoryAttr.Value.StringValue;
-        typeSource = '_category attribute';
-      } 
+      // First look specifically for aq_type
+      const aqTypeAttr = item.DocumentAttributes.find(attr => attr.Key === 'aq_type');
+      if (aqTypeAttr && aqTypeAttr.Value && aqTypeAttr.Value.StringValue) {
+        documentType = aqTypeAttr.Value.StringValue;
+        typeSource = 'aq_type attribute';
+        if (shouldLog) {
+          console.log(`Found aq_type document attribute: "${aqTypeAttr.Value.StringValue}"`);
+        }
+      } else {
+        // Fallback to _category if aq_type is not found
+        const categoryAttr = item.DocumentAttributes.find(attr => attr.Key === '_category');
+        if (categoryAttr && categoryAttr.Value && categoryAttr.Value.StringValue) {
+          documentType = categoryAttr.Value.StringValue;
+          typeSource = '_category attribute';
+        }
+      }
       
       if (shouldLog) {
         console.log(`Document Attributes:`, item.DocumentAttributes.map(attr => `${attr.Key}: ${JSON.stringify(attr.Value)}`));
@@ -471,6 +523,9 @@ export const transformKendraResults = (kendraResponse) => {
       } else if (item._source && item._source._category) {
         documentType = item._source._category;
         typeSource = '_source._category field';
+      } else if (item._source && item._source.aq_type) {
+        documentType = item._source.aq_type;
+        typeSource = '_source.aq_type field';
       }
     }
     
@@ -1037,7 +1092,11 @@ export const fetchFacetCounts = async (query = '', attributeFilter = null) => {
     
     // Create request body with the exact raw query (no wildcards, no trimming)
     const requestBody = {
-      query: query
+      query: query,
+      facets: [
+        { documentAttributeKey: 'jurisdiction' },
+        { documentAttributeKey: 'aq_type' }
+      ]
     };
 
     // Add attribute filter if provided

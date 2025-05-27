@@ -34,6 +34,7 @@ const PiCoPilotChat = ({ showHistory, setShowHistory, showToggleButton, showSour
   const [hovered, setHovered] = React.useState(false);
   const [dropdownHoveredIdx, setDropdownHoveredIdx] = React.useState(null);
   const [pendingQuestion, setPendingQuestion] = React.useState(null);
+  const messagesEndRef = React.useRef(null);
 
   const safeColors = Array.isArray(FOLDER_COLORS) && FOLDER_COLORS.length > 0 ? FOLDER_COLORS : ['#ccc'];
 
@@ -74,6 +75,12 @@ const PiCoPilotChat = ({ showHistory, setShowHistory, showToggleButton, showSour
     typeof activeThreadIndex === 'number' && chatHistory[activeThreadIndex]
       ? chatHistory[activeThreadIndex]
       : null;
+      
+  React.useEffect(() => {
+    if (process.env.NODE_ENV === 'development' && thread?.question) {
+      console.log("🧵 New thread rendered:", thread);
+    }
+  }, [thread]);
 
   return (
     <div className="chat-container" style={{ position: 'relative', zIndex: 10 }}>
@@ -231,9 +238,9 @@ const PiCoPilotChat = ({ showHistory, setShowHistory, showToggleButton, showSour
                         padding: '6px 10px 6px 28px',
                         borderRadius: 8,
                         cursor: 'pointer',
-                        background: dropdownHoveredIdx === idx ? '#f2faff' : (selectedFolder && selectedFolder.id === folder.id ? '#e0f0ff' : 'transparent'),
+                        background: selectedFolder && selectedFolder.id === folder.id ? '#e0f0ff' : 'transparent',
                         transition: 'background 0.2s',
-                        marginBottom: 2,
+                        marginBottom: 2
                       }}
                       onClick={() => {
                         setSelectedFolder(folder);
@@ -266,50 +273,44 @@ const PiCoPilotChat = ({ showHistory, setShowHistory, showToggleButton, showSour
           </div>
         )}
 
-        {/* Display all conversations from chat history */}
-        {chatHistory.length > 0 && (
-          <>
-            {chatHistory.map((entry, i) => (
-              <React.Fragment key={i}>
-                {/* User message */}
-                <div className="message user" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
-                  <div className="message-content" style={{
-                    whiteSpace: 'pre-wrap',
-                    marginRight: 12,
-                    background: '#457b9d',
-                    color: 'white',
-                    borderRadius: 12,
-                    padding: '12px 16px',
-                    fontSize: 15,
-                    fontWeight: 500,
-                    maxWidth: '70%',
-                    minWidth: 40,
-                    width: 'auto',
-                    display: 'inline-block',
-                    wordBreak: 'break-word',
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
-                    transition: 'width 0.2s',
-                  }}>
-                    {entry.question}
-                  </div>
-                  <span className="user-icon" style={{ marginLeft: 0 }}>
-                    <FaUser />
-                  </span>
-                </div>
-                {/* Co-pilot (AI) message */}
-                <div className="message">
-                  <img src={aiTechnology} alt="AI" className="message-avatar" />
-                  <div className="message-content" style={{ whiteSpace: 'pre-wrap' }}>
-                    {entry.answer}
-                  </div>
-                </div>
-              </React.Fragment>
-            ))}
-          </>
-        )}
+        {/* Always display conversation history */}
+        {chatHistory.map((entry, index) => (
+          <React.Fragment key={index}>
+            <div className="message user" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+              <div className="message-content" style={{
+                whiteSpace: 'pre-wrap',
+                marginRight: 12,
+                background: '#457b9d',
+                color: 'white',
+                borderRadius: 12,
+                padding: '12px 16px',
+                fontSize: 15,
+                fontWeight: 500,
+                maxWidth: '70%',
+                minWidth: 40,
+                width: 'auto',
+                display: 'inline-block',
+                wordBreak: 'break-word',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
+                transition: 'width 0.2s',
+              }}>
+                {entry.question}
+              </div>
+              <span className="user-icon" style={{ marginLeft: 0 }}>
+                <FaUser />
+              </span>
+            </div>
+            <div className="message">
+              <img src={aiTechnology} alt="AI" className="message-avatar" />
+              <div className="message-content" style={{ whiteSpace: 'pre-wrap' }}>
+                {entry.answer}
+              </div>
+            </div>
+          </React.Fragment>
+        ))}
 
-        {/* Show pending user question and loading spinner at the bottom */}
-        {pendingQuestion && (
+        {/* Show pending question and loading spinner when processing */}
+        {isLoading && pendingQuestion && (
           <>
             <div className="message user" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
               <div className="message-content" style={{
@@ -335,8 +336,11 @@ const PiCoPilotChat = ({ showHistory, setShowHistory, showToggleButton, showSour
                 <FaUser />
               </span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60px', margin: '12px 0' }}>
-              <LoadingSpinner />
+            <div className="message loading">
+              <img src={aiTechnology} alt="AI" className="message-avatar" />
+              <div style={{ display: 'flex', alignItems: 'center', minHeight: '60px', margin: '0 0 0 12px' }}>
+                <LoadingSpinner />
+              </div>
             </div>
           </>
         )}
