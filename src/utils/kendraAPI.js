@@ -35,9 +35,6 @@ export const searchKendra = async (query = '', jurisdiction = null, documentType
       // Convert single string to array for consistent processing
       const jurisdictionsArray = Array.isArray(jurisdiction) ? jurisdiction : [jurisdiction];
       
-      // Check if Minnesota is in the jurisdictions array
-      console.log('Minnesota in jurisdictions array?', jurisdictionsArray.includes('Minnesota'));
-      
       // Build jurisdiction filters
       jurisdictionsArray.forEach(jur => {
         if (jur && typeof jur === 'string') {
@@ -49,13 +46,6 @@ export const searchKendra = async (query = '', jurisdiction = null, documentType
             processedJurisdiction = jur.replace(/_/g, ' ').trim();
           } else {
             processedJurisdiction = jur.trim();
-          }
-          
-          if (jur === 'Minnesota' || processedJurisdiction === 'Minnesota') {
-            console.log('Processing Minnesota for Kendra filter:', { 
-              original: jur, 
-              processed: processedJurisdiction 
-            });
           }
           
           if (processedJurisdiction) {
