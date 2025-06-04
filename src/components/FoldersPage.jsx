@@ -25,7 +25,8 @@ const jurisdictions = [
   'Washington',
   'Arizona',
   'New_York',
-  'Sacramento_AQMD'
+  'Sacramento_AQMD',
+  'Minnesota'
 ];
 
 // Mapping between Kendra format (with spaces) and code format (with underscores)
@@ -39,7 +40,8 @@ const jurisdictionMapping = {
   'Texas': 'Texas',
   'Washington': 'Washington',
   'Arizona': 'Arizona',
-  'New York': 'New_York'
+  'New York': 'New_York',
+  'Minnesota': 'Minnesota'
 };
 
 // Reverse mapping for display and Kendra searches
