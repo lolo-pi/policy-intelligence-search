@@ -1,0 +1,16 @@
+.terms-text {
+  font-size: 0.8rem;
+  color: #666;
+  margin-top: 15px;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.terms-text a {
+  color: #457b9d;
+  text-decoration: none;
+}
+
+.terms-text a:hover {
+  text-decoration: underline;
+} 
