@@ -34,7 +34,6 @@ const PiCoPilotChat = ({ showHistory, setShowHistory, showToggleButton, showSour
   const [hovered, setHovered] = React.useState(false);
   const [dropdownHoveredIdx, setDropdownHoveredIdx] = React.useState(null);
   const [pendingQuestion, setPendingQuestion] = React.useState(null);
-  const messagesEndRef = React.useRef(null);
 
   const safeColors = Array.isArray(FOLDER_COLORS) && FOLDER_COLORS.length > 0 ? FOLDER_COLORS : ['#ccc'];
 

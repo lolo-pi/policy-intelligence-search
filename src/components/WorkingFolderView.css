@@ -184,7 +184,8 @@
   justify-content: center;
   transition: all 0.2s ease;
   font-size: 14px;
-  margin-top: 2px;
+  min-width: 28px;
+  height: 28px;
 }
 
 .document-item .remove-doc-button:hover {
@@ -284,4 +285,131 @@
 .clickable:hover {
   text-decoration: underline;
   color: #274C77;
+}
+
+/* Document actions container */
+.document-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Folder-level ingest section */
+.folder-ingest-section {
+  padding: 16px 0;
+  border-bottom: 1px solid #eee;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Folder ingest button styles */
+.folder-ingest-button {
+  background: #457b9d;
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  min-width: 200px;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.folder-ingest-button:hover:not(:disabled) {
+  background: #274C77;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.folder-ingest-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* Loading state */
+.folder-ingest-button.loading {
+  background: #6c757d;
+  cursor: not-allowed;
+}
+
+.folder-ingest-button.loading .spinning {
+  animation: spin 1s linear infinite;
+}
+
+/* Success state */
+.folder-ingest-button.success {
+  background: #28a745;
+  cursor: pointer;
+}
+
+.folder-ingest-button.success:hover {
+  background: #1e7e34;
+}
+
+/* Error state */
+.folder-ingest-button.error {
+  background: #dc3545;
+  cursor: pointer;
+}
+
+.folder-ingest-button.error:hover {
+  background: #c82333;
+}
+
+/* Ingest message styling */
+.ingest-message {
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: 4px;
+  text-align: center;
+  max-width: 300px;
+}
+
+.ingest-message.success {
+  color: #155724;
+  background-color: #d4edda;
+  border: 1px solid #c3e6cb;
+}
+
+.ingest-message.error {
+  color: #721c24;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+}
+
+.ingest-message.loading {
+  color: #856404;
+  background-color: #fff3cd;
+  border: 1px solid #ffeaa7;
+}
+
+/* Ingest button text */
+.ingest-text {
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+/* Spinning animation for loading state */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
 } 

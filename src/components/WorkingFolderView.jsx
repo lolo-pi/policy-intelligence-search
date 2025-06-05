@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import ReactDOM from 'react-dom';
-import { FaTimes, FaTrash, FaFolder, FaEdit, FaCheck, FaTimes as FaTimesSmall } from 'react-icons/fa';
+import { FaTimes, FaTrash, FaFolder, FaEdit, FaCheck, FaTimes as FaTimesSmall, FaRocket } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { useWorkingFolder } from '../context/WorkingFolderContext';
+import { AuthContext } from '../context/AuthContext';
 import aiTechnologyIcon from '../assets/AI-technology.png';
 import betaIcon from '../assets/Pi-CoPilot_Beta.svg';
 import MobileFolderIcon from './MobileFolderIcon';
@@ -12,11 +13,16 @@ import './WorkingFolderView.css';
 const WorkingFolderView = ({ isOpen, onClose, documents: initialDocuments, title, folder }) => {
   const navigate = useNavigate();
   const { removeFromWorkingFolder, renameFolder, removeFromFolder, removeFromFolderRemote, renameFolderRemote, folders } = useWorkingFolder();
+  const { user } = useContext(AuthContext);
   const [editing, setEditing] = useState(false);
   const [newName, setNewName] = useState(folder?.name || '');
   const [isRemoving, setIsRemoving] = useState({});
   const [isRenaming, setIsRenaming] = useState(false);
   const [currentDocuments, setCurrentDocuments] = useState(initialDocuments || []);
+  
+  // State for tracking folder-level ingestion status
+  const [folderIngestStatus, setFolderIngestStatus] = useState('idle'); // 'idle' | 'loading' | 'success' | 'error'
+  const [folderIngestMessage, setFolderIngestMessage] = useState('');
 
   // Keep local state in sync with props
   useEffect(() => {
@@ -99,6 +105,130 @@ const WorkingFolderView = ({ isOpen, onClose, documents: initialDocuments, title
     }
   };
 
+  // Function to handle folder-level ingestion
+  const handleIngestFolder = async () => {
+    // Use folderId if available, otherwise use id as fallback
+    const folderId = folder?.folderId || folder?.id;
+    
+    if (!folderId) {
+      alert('Cannot ingest: folder is missing ID');
+      return;
+    }
+
+    if (currentDocuments.length === 0) {
+      alert('Cannot ingest: folder contains no documents');
+      return;
+    }
+
+    const userId = user?.username || user?.userId || 'test-user';
+
+    // Set loading state
+    setFolderIngestStatus('loading');
+    setFolderIngestMessage('');
+
+    try {
+      // Debug log as requested
+      console.log("📤 Ingesting folder:", folderId, "for user:", userId);
+
+      console.log("===== FOLDER INGEST API REQUEST =====");
+      console.log("User ID:", userId);
+      console.log("Folder ID:", folderId);
+      console.log("Original folder.folderId:", folder?.folderId);
+      console.log("Original folder.id:", folder?.id);
+      console.log("Documents count:", currentDocuments.length);
+      console.log("=====================================");
+
+      const response = await fetch('https://gbgi989gbe.execute-api.us-west-2.amazonaws.com/sbx/ingest-chunk', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId, folderId }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("❌ API Error Response:", errorText);
+        throw new Error(`Error: ${response.status} - Failed to ingest folder`);
+      }
+
+      const data = await response.json();
+      console.log("✅ Folder ingest response:", data);
+
+      // Set success state
+      setFolderIngestStatus('success');
+      setFolderIngestMessage('Docs ready for chat!');
+
+    } catch (err) {
+      console.error('❌ Folder ingestion error:', err);
+      setFolderIngestStatus('error');
+      setFolderIngestMessage(err.message || 'Ingestion failed');
+    }
+  };
+
+  // Function to handle re-ingestion (with confirmation)
+  const handleReIngestFolder = () => {
+    if (window.confirm(`Re-ingest all documents in "${folder?.name || 'this folder'}"? This will process all documents again.`)) {
+      handleIngestFolder();
+    }
+  };
+
+  // Render folder ingest button based on status
+  const renderFolderIngestButton = () => {
+    if (isMobileFolder || !folder || currentDocuments.length === 0) {
+      return null;
+    }
+
+    if (folderIngestStatus === 'loading') {
+      return (
+        <button
+          className="folder-ingest-button loading"
+          disabled={true}
+          title="Ingesting all documents..."
+        >
+          <FaRocket className="spinning" />
+          <span className="ingest-text">Ingesting...</span>
+        </button>
+      );
+    }
+
+    if (folderIngestStatus === 'success') {
+      return (
+        <button
+          className="folder-ingest-button success"
+          onClick={handleReIngestFolder}
+          title="Documents ready for chat. Click to re-ingest."
+        >
+          <span className="ingest-text">✅ Docs Ready for Chat</span>
+        </button>
+      );
+    }
+
+    if (folderIngestStatus === 'error') {
+      return (
+        <button
+          className="folder-ingest-button error"
+          onClick={handleIngestFolder}
+          title={`Error: ${folderIngestMessage}. Click to retry.`}
+        >
+          <span className="ingest-text">❌ Retry Ingestion</span>
+        </button>
+      );
+    }
+
+    // Default state - not yet ingested
+    return (
+      <button
+        className="folder-ingest-button"
+        onClick={handleIngestFolder}
+        title="Prepare all documents in this folder for RAG chat"
+      >
+        <FaRocket />
+        <span className="ingest-text">📥 Prepare for Chat</span>
+      </button>
+    );
+  };
+
   // Render modal and overlay in a portal
   const modalContent = (
     <div className="working-folder-overlay">
@@ -179,6 +309,29 @@ const WorkingFolderView = ({ isOpen, onClose, documents: initialDocuments, title
           </button>
         </div>
         <div className="working-folder-content">
+          {/* DEBUG LOGGING */}
+          {console.log("===== FOLDER DEBUG INFO =====")}
+          {console.log("Folder object:", folder)}
+          {console.log("isMobileFolder:", isMobileFolder)}
+          {console.log("folder?.id:", folder?.id)}
+          {console.log("folder?.folderId:", folder?.folderId)}
+          {console.log("currentDocuments:", currentDocuments)}
+          {console.log("currentDocuments.length:", currentDocuments.length)}
+          {console.log("folderIngestStatus:", folderIngestStatus)}
+          {console.log("===============================")}
+          
+          {/* Folder-level ingest button */}
+          {renderFolderIngestButton() && (
+            <div className="folder-ingest-section">
+              {renderFolderIngestButton()}
+              {folderIngestMessage && (
+                <div className={`ingest-message ${folderIngestStatus}`}>
+                  {folderIngestMessage}
+                </div>
+              )}
+            </div>
+          )}
+          
           {currentDocuments.length === 0 ? (
             <p className="empty-message">No documents in {isMobileFolder ? 'Mobile Folder' : 'working folder'}</p>
           ) : (
@@ -208,18 +361,20 @@ const WorkingFolderView = ({ isOpen, onClose, documents: initialDocuments, title
                       <span className="document-jurisdiction">{doc.jurisdiction}</span>
                     </div>
                   </div>
-                  <button
-                    className="remove-doc-button"
-                    onClick={() => handleRemove(doc.id)}
-                    title="Remove from Folder"
-                    disabled={isRemoving[doc.id]}
-                  >
-                    {isRemoving[doc.id] ? (
-                      <span className="spinner-sm"></span>
-                    ) : (
-                      <FaTrash />
-                    )}
-                  </button>
+                  <div className="document-actions">
+                    <button
+                      className="remove-doc-button"
+                      onClick={() => handleRemove(doc.id)}
+                      title="Remove from Folder"
+                      disabled={isRemoving[doc.id]}
+                    >
+                      {isRemoving[doc.id] ? (
+                        <span className="spinner-sm"></span>
+                      ) : (
+                        <FaTrash />
+                      )}
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>
