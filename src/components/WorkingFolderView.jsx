@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { FaTimes, FaTrash, FaFolder, FaEdit, FaCheck, FaTimes as FaTimesSmall, FaRocket } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { useWorkingFolder } from '../context/WorkingFolderContext';
 import { AuthContext } from '../context/AuthContext';
+import { startIngestion } from '../utils/kendraAPI';
 import aiTechnologyIcon from '../assets/AI-technology.png';
 import betaIcon from '../assets/Pi-CoPilot_Beta.svg';
 import MobileFolderIcon from './MobileFolderIcon';
@@ -27,6 +28,8 @@ const WorkingFolderView = ({ isOpen, onClose, documents: initialDocuments, title
   // State for tracking per-document ingestion status
   const [docIngestionStatus, setDocIngestionStatus] = useState({}); // docTitle -> boolean
   const [statusLoading, setStatusLoading] = useState(false);
+  const [isPolling, setIsPolling] = useState(false);
+  const pollIntervalRef = useRef(null);
 
   // Determine if this is a mobile folder early - move this up to avoid initialization issues
   const isMobileFolder = !folder;
@@ -53,6 +56,48 @@ const WorkingFolderView = ({ isOpen, onClose, documents: initialDocuments, title
       }
     }
   }, [folder, folders]);
+
+  // Check if all documents are ingested whenever docIngestionStatus changes
+  useEffect(() => {
+    if (!folder || isMobileFolder || currentDocuments.length === 0) return;
+    
+    const allFilenames = currentDocuments.map(doc => normalizeTitleToFilename(doc.title));
+    const allIngested = allFilenames.every(fname => docIngestionStatus[fname] === true);
+    
+    if (allIngested && folderIngestStatus === 'loading') {
+      console.log("🎉 All documents are now ingested!");
+      setFolderIngestStatus('success');
+      setFolderIngestMessage('✅ Ingestion complete!');
+      setIsPolling(false); // 🔧 Stop polling
+      
+      // Clear the polling interval
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+    }
+  }, [docIngestionStatus, currentDocuments, folder, isMobileFolder, folderIngestStatus]);
+
+  // Cleanup polling interval on unmount or folder change
+  useEffect(() => {
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+        setIsPolling(false);
+      }
+    };
+  }, [folder]);
+
+  // Helper function to normalize document title to filename format
+  const normalizeTitleToFilename = (title) => {
+    if (!title) return '';
+    
+    return title
+      .replace(/\s/g, '_')         // Replace spaces with underscores
+      .replace(/,/g, '_')          // Replace commas with underscores
+      + '.pdf';                    // Add .pdf extension
+  };
 
   // Fetch ingestion status when folder changes
   useEffect(() => {
@@ -93,8 +138,8 @@ const WorkingFolderView = ({ isOpen, onClose, documents: initialDocuments, title
         const data = await response.json();
         console.log("✅ Ingestion status response:", data);
 
-        if (data.status === 'ok' && data.ingestionStatus) {
-          setDocIngestionStatus(data.ingestionStatus);
+        if (data.doc_status) {
+          setDocIngestionStatus(data.doc_status);
         } else {
           console.warn("Unexpected ingestion status response format:", data);
           setDocIngestionStatus({});
@@ -189,81 +234,41 @@ const WorkingFolderView = ({ isOpen, onClose, documents: initialDocuments, title
     setFolderIngestStatus('loading');
     setFolderIngestMessage('');
 
-    let ingestionSucceeded = false;
+    console.log("📤 Triggering folder ingestion:", folderId, "for user:", userId);
 
     try {
-      // Debug log as requested
-      console.log("📤 Ingesting folder:", folderId, "for user:", userId);
+      // Call the new start ingestion API
+      const result = await startIngestion(userId, folderId);
 
-      console.log("===== FOLDER INGEST API REQUEST =====");
-      console.log("User ID:", userId);
-      console.log("Folder ID:", folderId);
-      console.log("Original folder.folderId:", folder?.folderId);
-      console.log("Original folder.id:", folder?.id);
-      console.log("Documents count:", currentDocuments.length);
-      console.log("=====================================");
-
-      const response = await fetch('https://gbgi989gbe.execute-api.us-west-2.amazonaws.com/sbx/ingest-chunk', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ userId, folderId }),
-      });
-
-      // Always log the response for debugging
-      const responseText = await response.text();
-      console.log(`📊 Ingestion API Response (${response.status}):`, responseText);
-
-      if (response.ok) {
-        // Success case
-        let data;
-        try {
-          data = JSON.parse(responseText);
-        } catch (parseError) {
-          console.warn("Response not valid JSON, treating as success:", responseText);
-          data = { message: 'Ingestion completed' };
-        }
+      if (result.success) {
+        // Success case (including 503 warnings)
+        console.log("✅ Ingestion started successfully:", result.data);
         
-        console.log("✅ Folder ingest response:", data);
-        ingestionSucceeded = true;
-        
-        // Set success state
         setFolderIngestStatus('success');
-        setFolderIngestMessage('Docs ready for chat!');
-
-      } else if (response.status === 503) {
-        // 503 Service Unavailable - treat as warning, not error
-        console.warn("⚠️ Service temporarily unavailable (503), but ingestion may have started");
-        setFolderIngestStatus('success'); // Optimistically assume success
-        setFolderIngestMessage('Ingestion started (service busy)');
-        ingestionSucceeded = true; // Assume it will succeed
+        if (result.warning) {
+          setFolderIngestMessage(`Ingestion started (${result.warning})`);
+        } else {
+          setFolderIngestMessage('Ingestion started successfully!');
+        }
 
       } else {
-        // Other non-200 responses - treat as errors
-        console.error("❌ API Error Response:", responseText);
+        // Error case
+        console.error("❌ Ingestion failed:", result.error);
         setFolderIngestStatus('error');
-        setFolderIngestMessage(`Error ${response.status}: ${responseText.substring(0, 100)}`);
+        setFolderIngestMessage(result.error || 'Failed to start ingestion');
       }
 
     } catch (err) {
-      // Network or other exceptions
-      console.error('❌ Folder ingestion error:', err);
+      // Unexpected error (shouldn't happen since startIngestion handles all errors)
+      console.error('❌ Unexpected error in handleIngestFolder:', err);
       setFolderIngestStatus('error');
-      setFolderIngestMessage(err.message || 'Ingestion failed');
+      setFolderIngestMessage('Unexpected error occurred');
     } finally {
-      // Always refresh ingestion status after a delay, regardless of success/failure
-      // This ensures UI updates correctly even if ingestion succeeds after initial response
-      console.log("🔄 Waiting 3 seconds before refreshing ingestion status...");
+      // Always start polling for ingestion status, regardless of success/failure
+      console.log("🔄 Starting ingestion status polling (every 15 seconds for up to 10 minutes)...");
       
-      setTimeout(async () => {
-        try {
-          await refreshIngestionStatus();
-          console.log("✅ Ingestion status refreshed after delay");
-        } catch (refreshError) {
-          console.warn("Failed to refresh ingestion status:", refreshError);
-        }
-      }, 3000); // 3 second delay to give Lambda time to write to DynamoDB
+      setIsPolling(true); // 🔧 Start polling
+      pollIngestionStatus(userId, folderId, currentDocuments);
     }
   };
 
@@ -289,9 +294,9 @@ const WorkingFolderView = ({ isOpen, onClose, documents: initialDocuments, title
 
       if (response.ok) {
         const data = await response.json();
-        if (data.status === 'ok' && data.ingestionStatus) {
-          setDocIngestionStatus(data.ingestionStatus);
-          console.log("✅ Ingestion status refreshed:", data.ingestionStatus);
+        if (data.doc_status) {
+          setDocIngestionStatus(data.doc_status);
+          console.log("✅ Ingestion status refreshed:", data.doc_status);
         }
       }
     } catch (err) {
@@ -299,22 +304,94 @@ const WorkingFolderView = ({ isOpen, onClose, documents: initialDocuments, title
     }
   };
 
+  // Function to poll ingestion status until all documents are ingested or timeout
+  const pollIngestionStatus = async (userId, folderId, documentsToCheck) => {
+    const maxAttempts = 60; // 15 minutes at 15 second intervals
+    let attempts = 0;
+    
+    // Clear any existing polling interval
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+    }
+    
+    pollIntervalRef.current = setInterval(async () => {
+      attempts++;
+      console.log(`🔄 Polling ingestion status (attempt ${attempts}/${maxAttempts})...`);
+      
+      try {
+        const response = await fetch('https://gbgi989gbe.execute-api.us-west-2.amazonaws.com/sbx/get-ingestion-status', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ userId, folderId }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.doc_status) {
+            setDocIngestionStatus(data.doc_status);
+            console.log(`✅ Ingestion status updated (attempt ${attempts}):`, data.doc_status);
+            
+            // Check if all documents are ingested
+            const allIngested = documentsToCheck.every(doc => data.doc_status[normalizeTitleToFilename(doc.title)] === true);
+            
+            if (allIngested) {
+              console.log("🎉 All documents are now ingested! Stopping polling.");
+              clearInterval(pollIntervalRef.current);
+              pollIntervalRef.current = null;
+              return;
+            }
+          }
+        } else {
+          console.warn(`⚠️ Polling attempt ${attempts} failed with status ${response.status}`);
+        }
+      } catch (err) {
+        console.warn(`⚠️ Polling attempt ${attempts} failed:`, err);
+      }
+      
+      // Check if we've reached the maximum attempts
+      if (attempts >= maxAttempts) {
+        console.warn("⏳ Polling timeout reached (15 minutes). Ingestion may still be in progress.");
+        setFolderIngestStatus('error');
+        setFolderIngestMessage('Ingestion timeout (15 minutes). Some documents may still be processing.');
+        setIsPolling(false); // 🔧 Stop polling on timeout
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+    }, 15000); // 15 seconds
+  };
+
   // Function to render document ingestion status
   const renderDocumentIngestionStatus = (doc) => {
+    const normalized = normalizeTitleToFilename(doc.title);
+    
+    // Debug logging for key matching
+    console.log("🔍 Checking ingestion status:");
+    console.log("doc.title:", doc.title);
+    console.log("normalized filename:", normalized);
+    console.log("Available status keys:", Object.keys(docIngestionStatus));
+    console.log("Status match:", docIngestionStatus[normalized]);
+    
     if (statusLoading) {
       return (
         <span className="doc-ingestion-status loading" title="Checking ingestion status...">
-          ⏳
+          ⏳ Loading...
         </span>
       );
     }
 
-    const isIngested = docIngestionStatus[doc.title];
+    const isIngested = docIngestionStatus[normalized];
+    
+    // Log if document filename results in undefined
+    if (isIngested === undefined) {
+      console.log("⚠️ Normalized filename resulted in undefined status:", normalized);
+    }
     
     if (isIngested === true) {
       return (
         <span className="doc-ingestion-status ingested" title="Document is ingested and ready for chat">
-          ✅ Ingested
+          ✅ Ready
         </span>
       );
     }
@@ -322,7 +399,7 @@ const WorkingFolderView = ({ isOpen, onClose, documents: initialDocuments, title
     if (isIngested === false) {
       return (
         <span className="doc-ingestion-status not-ingested" title="Document not yet ingested">
-          📤 Pending
+          ❌ Not Ready
         </span>
       );
     }
@@ -330,14 +407,14 @@ const WorkingFolderView = ({ isOpen, onClose, documents: initialDocuments, title
     // undefined status - show nothing or a neutral indicator
     return (
       <span className="doc-ingestion-status unknown" title="Ingestion status unknown">
-        ❓
+        ❓ Unknown
       </span>
     );
   };
 
-  // Function to handle re-ingestion (with confirmation)
+  // Function to handle re-starting ingestion (with confirmation)
   const handleReIngestFolder = () => {
-    if (window.confirm(`Re-ingest all documents in "${folder?.name || 'this folder'}"? This will process all documents again.`)) {
+    if (window.confirm(`Restart ingestion for all documents in "${folder?.name || 'this folder'}"? This will start the ingestion process again.`)) {
       handleIngestFolder();
     }
   };
@@ -353,10 +430,10 @@ const WorkingFolderView = ({ isOpen, onClose, documents: initialDocuments, title
         <button
           className="folder-ingest-button loading"
           disabled={true}
-          title="Ingesting all documents..."
+          title="Starting ingestion process..."
         >
           <FaRocket className="spinning" />
-          <span className="ingest-text">Ingesting...</span>
+          <span className="ingest-text">⏳ Starting Ingestion...</span>
         </button>
       );
     }
@@ -366,9 +443,15 @@ const WorkingFolderView = ({ isOpen, onClose, documents: initialDocuments, title
         <button
           className="folder-ingest-button success"
           onClick={handleReIngestFolder}
-          title="Documents ready for chat. Click to re-ingest."
+          title={folderIngestMessage.includes('Ingestion complete') 
+            ? "All documents are ready for chat! Click to restart ingestion if needed." 
+            : "Ingestion started successfully. Click to restart ingestion."}
         >
-          <span className="ingest-text">✅ Docs Ready for Chat</span>
+          <span className="ingest-text">
+            {folderIngestMessage.includes('Ingestion complete') 
+              ? '✅ All Ready for Chat!' 
+              : '✅ Ingestion Started!'}
+          </span>
         </button>
       );
     }
@@ -380,20 +463,20 @@ const WorkingFolderView = ({ isOpen, onClose, documents: initialDocuments, title
           onClick={handleIngestFolder}
           title={`Error: ${folderIngestMessage}. Click to retry.`}
         >
-          <span className="ingest-text">❌ Retry Ingestion</span>
+          <span className="ingest-text">❌ Start Ingestion</span>
         </button>
       );
     }
 
-    // Default state - not yet ingested
+    // Default state - not yet started
     return (
       <button
         className="folder-ingest-button"
         onClick={handleIngestFolder}
-        title="Prepare all documents in this folder for RAG chat"
+        title="Start ingestion process for all documents in this folder"
       >
         <FaRocket />
-        <span className="ingest-text">📥 Prepare for Chat</span>
+        <span className="ingest-text">🚀 Start Ingestion</span>
       </button>
     );
   };
@@ -487,8 +570,10 @@ const WorkingFolderView = ({ isOpen, onClose, documents: initialDocuments, title
           {console.log("currentDocuments:", currentDocuments)}
           {console.log("currentDocuments.length:", currentDocuments.length)}
           {console.log("folderIngestStatus:", folderIngestStatus)}
+          {console.log("folderIngestMessage:", folderIngestMessage)}
           {console.log("docIngestionStatus:", docIngestionStatus)}
           {console.log("statusLoading:", statusLoading)}
+          {console.log("API Flow: Using /ingest-chunks endpoint")}
           {console.log("===============================")}
           
           {/* Folder-level ingest button */}

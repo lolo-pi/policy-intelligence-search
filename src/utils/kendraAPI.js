@@ -1142,4 +1142,84 @@ export const fetchFacetCounts = async (query = '', attributeFilter = null) => {
     console.error('Error fetching facet counts:', error.message);
     return {};
   }
+};
+
+/**
+ * Start ingestion for a folder using the IngestDocsLambdaV2
+ * @param {string} userId - User identifier
+ * @param {string} folderId - Folder identifier  
+ * @returns {Promise<Object>} - API response with status or error
+ */
+export const startIngestion = async (userId, folderId) => {
+  try {
+    console.log("🚀 Starting ingestion for folder:", folderId, "user:", userId);
+
+    const requestPayload = { userId, folderId };
+    
+    console.log("===== INGEST CHUNKS API REQUEST =====");
+    console.log("Endpoint: /ingest-chunks");
+    console.log("Payload:", requestPayload);
+    console.log("======================================");
+
+    const response = await fetch('https://gbgi989gbe.execute-api.us-west-2.amazonaws.com/sbx/ingest-chunks', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestPayload),
+    });
+
+    // Always log the response for debugging
+    const responseText = await response.text();
+    console.log(`📊 Ingest Chunks API Response (${response.status}):`, responseText);
+
+    if (response.ok) {
+      // Success case - try to parse JSON
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.warn("Response not valid JSON, treating as success:", responseText);
+        data = { status: 'ok', message: 'Ingestion started successfully' };
+      }
+      
+      console.log("✅ Ingest chunks response:", data);
+      return { success: true, data };
+
+    } else if (response.status === 503) {
+      // 503 Service Unavailable - treat as potential success
+      console.warn("⚠️ Service temporarily unavailable (503), but ingestion may have started");
+      return { 
+        success: true, 
+        data: { status: 'ok', message: 'Ingestion started (service busy)' },
+        warning: 'Service temporarily busy'
+      };
+
+    } else {
+      // Other non-200 responses - treat as errors
+      console.error("❌ Ingest Chunks API Error:", responseText);
+      
+      let errorData;
+      try {
+        errorData = JSON.parse(responseText);
+      } catch (parseError) {
+        errorData = { error: `HTTP ${response.status}: ${responseText}` };
+      }
+      
+      return { 
+        success: false, 
+        error: errorData.error || `Request failed with status ${response.status}`,
+        data: errorData
+      };
+    }
+
+  } catch (err) {
+    // Network or other exceptions
+    console.error('❌ Ingest chunks network error:', err);
+    return { 
+      success: false, 
+      error: err.message || 'Network error occurred',
+      exception: true
+    };
+  }
 }; 
