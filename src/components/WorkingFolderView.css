@@ -412,4 +412,47 @@
 
 .spinning {
   animation: spin 1s linear infinite;
+}
+
+/* Document jurisdiction styling */
+.document-jurisdiction {
+  color: #457b9d;
+  font-size: 13px;
+  font-weight: 500;
+  background-color: rgba(69, 123, 157, 0.1);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+/* Document ingestion status styling */
+.doc-ingestion-status {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.doc-ingestion-status.loading {
+  color: #856404;
+  background-color: #fff3cd;
+  border: 1px solid #ffeaa7;
+}
+
+.doc-ingestion-status.ingested {
+  color: #155724;
+  background-color: #d4edda;
+  border: 1px solid #c3e6cb;
+}
+
+.doc-ingestion-status.not-ingested {
+  color: #721c24;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+}
+
+.doc-ingestion-status.unknown {
+  color: #6c757d;
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
 } 

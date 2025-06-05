@@ -23,6 +23,16 @@ const WorkingFolderView = ({ isOpen, onClose, documents: initialDocuments, title
   // State for tracking folder-level ingestion status
   const [folderIngestStatus, setFolderIngestStatus] = useState('idle'); // 'idle' | 'loading' | 'success' | 'error'
   const [folderIngestMessage, setFolderIngestMessage] = useState('');
+  
+  // State for tracking per-document ingestion status
+  const [docIngestionStatus, setDocIngestionStatus] = useState({}); // docTitle -> boolean
+  const [statusLoading, setStatusLoading] = useState(false);
+
+  // Determine if this is a mobile folder early - move this up to avoid initialization issues
+  const isMobileFolder = !folder;
+
+  // Early return if modal is not open
+  if (!isOpen) return null;
 
   // Keep local state in sync with props
   useEffect(() => {
@@ -44,9 +54,62 @@ const WorkingFolderView = ({ isOpen, onClose, documents: initialDocuments, title
     }
   }, [folder, folders]);
 
-  if (!isOpen) return null;
+  // Fetch ingestion status when folder changes
+  useEffect(() => {
+    const fetchIngestionStatus = async () => {
+      if (!folder || isMobileFolder) {
+        setDocIngestionStatus({});
+        return;
+      }
 
-  const isMobileFolder = !folder;
+      const folderId = folder?.folderId || folder?.id;
+      if (!folderId) {
+        console.warn("No folder ID available for ingestion status check");
+        return;
+      }
+
+      const userId = user?.username || user?.userId || 'test-user';
+      setStatusLoading(true);
+
+      try {
+        console.log("📋 Checking ingestion status for folder:", folderId, "user:", userId);
+
+        const response = await fetch('https://gbgi989gbe.execute-api.us-west-2.amazonaws.com/sbx/get-ingestion-status', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ userId, folderId }),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("❌ Ingestion status API error:", errorText);
+          // Don't throw - just log and continue with empty status
+          setDocIngestionStatus({});
+          return;
+        }
+
+        const data = await response.json();
+        console.log("✅ Ingestion status response:", data);
+
+        if (data.status === 'ok' && data.ingestionStatus) {
+          setDocIngestionStatus(data.ingestionStatus);
+        } else {
+          console.warn("Unexpected ingestion status response format:", data);
+          setDocIngestionStatus({});
+        }
+
+      } catch (err) {
+        console.error('❌ Failed to fetch ingestion status:', err);
+        setDocIngestionStatus({});
+      } finally {
+        setStatusLoading(false);
+      }
+    };
+
+    fetchIngestionStatus();
+  }, [folder, user, isMobileFolder]); // Re-fetch when folder or user changes
 
   const handleRemove = async (docId) => {
     if (docId) {
@@ -126,6 +189,8 @@ const WorkingFolderView = ({ isOpen, onClose, documents: initialDocuments, title
     setFolderIngestStatus('loading');
     setFolderIngestMessage('');
 
+    let ingestionSucceeded = false;
+
     try {
       // Debug log as requested
       console.log("📤 Ingesting folder:", folderId, "for user:", userId);
@@ -146,24 +211,128 @@ const WorkingFolderView = ({ isOpen, onClose, documents: initialDocuments, title
         body: JSON.stringify({ userId, folderId }),
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("❌ API Error Response:", errorText);
-        throw new Error(`Error: ${response.status} - Failed to ingest folder`);
+      // Always log the response for debugging
+      const responseText = await response.text();
+      console.log(`📊 Ingestion API Response (${response.status}):`, responseText);
+
+      if (response.ok) {
+        // Success case
+        let data;
+        try {
+          data = JSON.parse(responseText);
+        } catch (parseError) {
+          console.warn("Response not valid JSON, treating as success:", responseText);
+          data = { message: 'Ingestion completed' };
+        }
+        
+        console.log("✅ Folder ingest response:", data);
+        ingestionSucceeded = true;
+        
+        // Set success state
+        setFolderIngestStatus('success');
+        setFolderIngestMessage('Docs ready for chat!');
+
+      } else if (response.status === 503) {
+        // 503 Service Unavailable - treat as warning, not error
+        console.warn("⚠️ Service temporarily unavailable (503), but ingestion may have started");
+        setFolderIngestStatus('success'); // Optimistically assume success
+        setFolderIngestMessage('Ingestion started (service busy)');
+        ingestionSucceeded = true; // Assume it will succeed
+
+      } else {
+        // Other non-200 responses - treat as errors
+        console.error("❌ API Error Response:", responseText);
+        setFolderIngestStatus('error');
+        setFolderIngestMessage(`Error ${response.status}: ${responseText.substring(0, 100)}`);
       }
 
-      const data = await response.json();
-      console.log("✅ Folder ingest response:", data);
-
-      // Set success state
-      setFolderIngestStatus('success');
-      setFolderIngestMessage('Docs ready for chat!');
-
     } catch (err) {
+      // Network or other exceptions
       console.error('❌ Folder ingestion error:', err);
       setFolderIngestStatus('error');
       setFolderIngestMessage(err.message || 'Ingestion failed');
+    } finally {
+      // Always refresh ingestion status after a delay, regardless of success/failure
+      // This ensures UI updates correctly even if ingestion succeeds after initial response
+      console.log("🔄 Waiting 3 seconds before refreshing ingestion status...");
+      
+      setTimeout(async () => {
+        try {
+          await refreshIngestionStatus();
+          console.log("✅ Ingestion status refreshed after delay");
+        } catch (refreshError) {
+          console.warn("Failed to refresh ingestion status:", refreshError);
+        }
+      }, 3000); // 3 second delay to give Lambda time to write to DynamoDB
     }
+  };
+
+  // Function to refresh ingestion status
+  const refreshIngestionStatus = async () => {
+    if (!folder || isMobileFolder) return;
+
+    const folderId = folder?.folderId || folder?.id;
+    if (!folderId) return;
+
+    const userId = user?.username || user?.userId || 'test-user';
+
+    try {
+      console.log("🔄 Refreshing ingestion status...");
+
+      const response = await fetch('https://gbgi989gbe.execute-api.us-west-2.amazonaws.com/sbx/get-ingestion-status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId, folderId }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.status === 'ok' && data.ingestionStatus) {
+          setDocIngestionStatus(data.ingestionStatus);
+          console.log("✅ Ingestion status refreshed:", data.ingestionStatus);
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to refresh ingestion status:', err);
+    }
+  };
+
+  // Function to render document ingestion status
+  const renderDocumentIngestionStatus = (doc) => {
+    if (statusLoading) {
+      return (
+        <span className="doc-ingestion-status loading" title="Checking ingestion status...">
+          ⏳
+        </span>
+      );
+    }
+
+    const isIngested = docIngestionStatus[doc.title];
+    
+    if (isIngested === true) {
+      return (
+        <span className="doc-ingestion-status ingested" title="Document is ingested and ready for chat">
+          ✅ Ingested
+        </span>
+      );
+    }
+    
+    if (isIngested === false) {
+      return (
+        <span className="doc-ingestion-status not-ingested" title="Document not yet ingested">
+          📤 Pending
+        </span>
+      );
+    }
+    
+    // undefined status - show nothing or a neutral indicator
+    return (
+      <span className="doc-ingestion-status unknown" title="Ingestion status unknown">
+        ❓
+      </span>
+    );
   };
 
   // Function to handle re-ingestion (with confirmation)
@@ -318,6 +487,8 @@ const WorkingFolderView = ({ isOpen, onClose, documents: initialDocuments, title
           {console.log("currentDocuments:", currentDocuments)}
           {console.log("currentDocuments.length:", currentDocuments.length)}
           {console.log("folderIngestStatus:", folderIngestStatus)}
+          {console.log("docIngestionStatus:", docIngestionStatus)}
+          {console.log("statusLoading:", statusLoading)}
           {console.log("===============================")}
           
           {/* Folder-level ingest button */}
@@ -359,6 +530,7 @@ const WorkingFolderView = ({ isOpen, onClose, documents: initialDocuments, title
                     <span className="document-description">{doc.description}</span>
                     <div className="document-meta">
                       <span className="document-jurisdiction">{doc.jurisdiction}</span>
+                      {renderDocumentIngestionStatus(doc)}
                     </div>
                   </div>
                   <div className="document-actions">
