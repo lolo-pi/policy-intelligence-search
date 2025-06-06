@@ -7,6 +7,7 @@ export const ChatContext = createContext();
 const LOCAL_STORAGE_KEY = 'copilotChatHistory';
 const THREAD_ID_KEY = 'copilotThreadId';
 const SHOW_HISTORY_KEY = 'copilotShowHistory';
+const BASE_URL = 'https://gbgi989gbe.execute-api.us-west-2.amazonaws.com/sbx';
 
 export const ChatProvider = ({ children }) => {
   const [question, setQuestion] = useState('');
@@ -57,6 +58,33 @@ export const ChatProvider = ({ children }) => {
     localStorage.setItem(SHOW_HISTORY_KEY, showHistory);
   }, [showHistory]);
 
+  const buildContextPrompt = () => {
+    const recentHistory = chatHistory
+      .map(entry => `User: ${entry.question}\nAssistant: ${entry.answer}`)
+      .join('\n\n');
+
+    const docTitles = selectedFolder?.documents?.map((doc, i) =>
+      `${i + 1}. ${doc.title}`
+    ).join('\n');
+
+    const docHeaderParts = [];
+
+    docHeaderParts.push(
+      `You are a regulatory policy assistant helping users understand air quality rules and emissions requirements.\n` +
+      `Use only the following documents to answer questions${selectedFolder ? ' about ' + selectedFolder.name : ''}:`
+    );
+
+    if (docTitles) {
+      docHeaderParts.push(`${docTitles}`);
+    }
+
+    if (recentHistory) {
+      docHeaderParts.push(`The conversation so far:\n${recentHistory}`);
+    }
+
+    return docHeaderParts.join('\n\n');
+  };
+
   const handleChatSubmit = async (newQuestion) => {
     // Validate question
     if (!newQuestion.trim()) {
@@ -68,38 +96,29 @@ export const ChatProvider = ({ children }) => {
     setError(null);
 
     try {
-      // Check if we're in folder chat mode
-      const isFolderMode = selectedFolder && 
-                          Array.isArray(selectedFolder.documents) && 
-                          selectedFolder.documents.length > 0;
+      const userId = user?.username || user?.userId || 'anonymous';
+      const hasFolderDocs = selectedFolder?.documents?.length > 0;
 
-      if (isFolderMode) {
-        // Folder Chat Mode: Use custom RAG system
+      if (hasFolderDocs) {
+        // Use chat-with-docs Lambda for folder-specific chat
         if (!selectedFolder.folderId) {
           throw new Error('Selected folder is missing folderId');
         }
 
-        const userId = user?.username || user?.userId || 'anonymous';
-        
-        const requestPayload = {
-          userId: userId,
-          folderId: selectedFolder.folderId,
-          question: newQuestion
-        };
-
-        console.log("===== FOLDER CHAT API REQUEST =====");
+        console.log("===== FOLDER CHAT WITH DOCS API REQUEST =====");
         console.log("User ID:", userId);
         console.log("Folder ID:", selectedFolder.folderId);
         console.log("Question:", newQuestion);
-        console.log("Full payload:", requestPayload);
-        console.log("====================================");
+        console.log("==============================================");
 
-        const response = await fetch('https://gbgi989gbe.execute-api.us-west-2.amazonaws.com/sbx/chat', {
+        const response = await fetch(`${BASE_URL}/chat-with-docs`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(requestPayload),
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId,
+            folderId: selectedFolder.folderId,
+            question: newQuestion
+          }),
         });
 
         if (!response.ok) {
@@ -108,90 +127,41 @@ export const ChatProvider = ({ children }) => {
 
         const data = await response.json();
         
-        // Handle folder chat response format
         if (!data.answer) {
           throw new Error('Invalid response format: missing answer');
         }
 
-        // Combine answer with sources
-        let fullAnswer = data.answer;
-        if (data.sources && Array.isArray(data.sources) && data.sources.length > 0) {
-          fullAnswer += `\n\nSources: ${data.sources.join(', ')}`;
-        }
+        setAnswer(data.answer);
+        setCitations(data.sources || []);
 
-        setAnswer(fullAnswer);
-        setCitations([]); // Folder mode doesn't use citations array
-
-        // Add to chat history
-        setChatHistory(prev => {
-          const newEntry = {
-            question: newQuestion,
-            answer: fullAnswer,
-            citations: [],
-            timestamp: new Date().toISOString(),
-            mode: 'folder' // Track which mode was used
-          };
-
-          const limitedHistory = [...prev, newEntry].slice(-6);
-          setActiveThreadIndex(limitedHistory.length - 1);
-          return limitedHistory;
-        });
+        const newEntry = {
+          question: newQuestion,
+          answer: data.answer,
+          citations: data.sources || [],
+          timestamp: new Date().toISOString(),
+          mode: 'folder-chat'
+        };
+        
+        // Update history and UI
+        setChatHistory(prev => [...prev.slice(-5), newEntry]);
+        setActiveThreadIndex(chatHistory.length);
 
       } else {
-        // Check if no folder selected but user expected folder mode
-        if (selectedFolder && (!selectedFolder.documents || selectedFolder.documents.length === 0)) {
-          alert('The selected folder contains no documents. Please select a folder with documents or switch to general chat mode.');
-          setIsLoading(false);
-          return;
-        }
-
-        // General Chat Mode: Use existing Bedrock Knowledge Base
-        const recentHistory = chatHistory
-          .map(entry => `User: ${entry.question}\nAssistant: ${entry.answer}`)
-          .join('\n\n');
-
-        const docTitles = selectedFolder?.documents?.map((doc, i) =>
-          `${i + 1}. ${doc.title}`
-        ).join('\n');
-
-        const docHeaderParts = [];
-
-        docHeaderParts.push(
-          `You are a regulatory policy assistant helping users understand air quality rules and emissions requirements.\n` +
-          `Use only the following documents to answer questions${selectedFolder ? ' about ' + selectedFolder.name : ''}:`
-        );
-
-        if (docTitles) {
-          docHeaderParts.push(`${docTitles}`);
-        }
-
-        if (recentHistory) {
-          docHeaderParts.push(`The conversation so far:\n${recentHistory}`);
-        }
-
-        docHeaderParts.push(`User: ${newQuestion}`);
-
-        const docHeader = docHeaderParts.join('\n\n');
-
-        const requestPayload = {
-          threadId: threadId,
-          question: newQuestion,
-          contextPrompt: docHeader // Fixed: was using undefined contextPrompt
-        };
-
+        // Use general KB chat mode
         console.log("===== KB CHAT API REQUEST =====");
         console.log("Thread ID:", threadId);
         console.log("Question:", newQuestion);
-        console.log("Context Prompt:", docHeader);
-        console.log("Full payload:", requestPayload);
+        console.log("Context Prompt:", buildContextPrompt());
         console.log("===============================");
 
-        const response = await fetch('https://gbgi989gbe.execute-api.us-west-2.amazonaws.com/sbx/kb-chat', {
+        const response = await fetch(`${BASE_URL}/kb-chat`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(requestPayload),
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            threadId: threadId,
+            question: newQuestion,
+            contextPrompt: buildContextPrompt()
+          }),
         });
 
         if (!response.ok) {
@@ -199,7 +169,10 @@ export const ChatProvider = ({ children }) => {
         }
 
         const data = await response.json();
-        setAnswer(data.answer);
+        
+        if (!data.answer) {
+          throw new Error('Invalid response format: missing answer');
+        }
 
         const uniqueCitations = [];
         const seenUrls = new Set();
@@ -214,22 +187,19 @@ export const ChatProvider = ({ children }) => {
           });
         }
 
+        setAnswer(data.answer);
         setCitations(uniqueCitations);
 
-        // Add to chat history
-        setChatHistory(prev => {
-          const newEntry = {
-            question: newQuestion,
-            answer: data.answer,
-            citations: uniqueCitations,
-            timestamp: new Date().toISOString(),
-            mode: 'knowledge-base' // Track which mode was used
-          };
-
-          const limitedHistory = [...prev, newEntry].slice(-6);
-          setActiveThreadIndex(limitedHistory.length - 1);
-          return limitedHistory;
-        });
+        const newEntry = {
+          question: newQuestion,
+          answer: data.answer,
+          citations: uniqueCitations,
+          timestamp: new Date().toISOString(),
+          mode: 'knowledge-base'
+        };
+        
+        setChatHistory(prev => [...prev.slice(-5), newEntry]);
+        setActiveThreadIndex(chatHistory.length);
       }
 
       setQuestion('');

@@ -37,6 +37,14 @@ const PiCoPilotChat = ({ showHistory, setShowHistory, showToggleButton, showSour
 
   const safeColors = Array.isArray(FOLDER_COLORS) && FOLDER_COLORS.length > 0 ? FOLDER_COLORS : ['#ccc'];
 
+  // Helper function to normalize folder objects
+  const normalizeFolder = (folder) => {
+    return {
+      ...folder,
+      folderId: folder.folderId || folder.folder_id || folder.id
+    };
+  };
+
   React.useEffect(() => {
     if (!showFolderDropdown) return;
     const handleClick = (e) => {
@@ -242,7 +250,8 @@ const PiCoPilotChat = ({ showHistory, setShowHistory, showToggleButton, showSour
                         marginBottom: 2
                       }}
                       onClick={() => {
-                        setSelectedFolder(folder);
+                        const normalizedFolder = normalizeFolder(folder);
+                        setSelectedFolder(normalizedFolder);
                         setShowFolderDropdown(false);
                       }}
                       onMouseEnter={() => setDropdownHoveredIdx(idx)}

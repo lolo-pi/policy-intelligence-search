@@ -27,6 +27,17 @@ export function WorkingFolderProvider({ children }) {
     return HARDCODED_USER_ID;
   };
 
+  // Helper function to normalize folder objects
+  const normalizeFolder = (folder) => {
+    return {
+      ...folder,
+      folderId: folder.folderId || folder.folder_id || folder.id,
+      // Ensure folderName exists (this could be missing in some records)
+      name: folder.name || folder.folderName || 'Unnamed Folder',
+      documents: folder.documents || []
+    };
+  };
+
   // Load folders on component mount
   useEffect(() => {
     console.log("WorkingFolderProvider mounted - initial load of folders");
@@ -74,14 +85,9 @@ export function WorkingFolderProvider({ children }) {
         }
       } else if (data && data.folders) {
         console.log("Setting folders from API:", data.folders);
-        // When loading folders from the backend, we need to ensure documents array exists
-        const foldersWithDocuments = data.folders.map(folder => ({
-          ...folder,
-          // Ensure folderName exists (this could be missing in some records)
-          name: folder.name || folder.folderName || 'Unnamed Folder',
-          documents: folder.documents || []
-        }));
-        setFolders(foldersWithDocuments);
+        // Normalize folders when loading from the backend
+        const normalizedFolders = data.folders.map(normalizeFolder);
+        setFolders(normalizedFolders);
       } else {
         console.warn("API returned unexpected format - missing 'folders' property:", data);
         // Set empty folders array to avoid undefined errors
@@ -147,17 +153,18 @@ export function WorkingFolderProvider({ children }) {
         return null;
       }
       
-      // Make sure we have both ID and name
-      const newFolder = {
+      // Create and normalize folder object
+      const rawFolder = {
         id: data.folderId,
-        name: name.trim(), // Use the name we provided
-        folderName: name.trim(), // Include both name and folderName fields
+        name: name.trim(),
+        folderName: name.trim(),
         documents: []
       };
       
-      console.log("Creating new folder in state:", newFolder);
-      setFolders(prev => [...prev, newFolder]);
-      return newFolder;
+      const normalizedFolder = normalizeFolder(rawFolder);
+      console.log("Creating normalized folder in state:", normalizedFolder);
+      setFolders(prev => [...prev, normalizedFolder]);
+      return normalizedFolder;
     } catch (error) {
       console.error('Error creating folder remotely:', error);
       // Re-throw the error so caller knows something went wrong
@@ -174,14 +181,16 @@ export function WorkingFolderProvider({ children }) {
       console.error("Failed to create folder remotely, falling back to local creation:", error);
       
       // Fall back to local creation if the API fails
-      const newFolder = {
+      const rawFolder = {
         id: `local-${Date.now()}`, // Use a special prefix for local folders
         name: name.trim(),
         folderName: name.trim(),
         documents: []
       };
-      setFolders(prev => [...prev, newFolder]);
-      return newFolder;
+      
+      const normalizedFolder = normalizeFolder(rawFolder);
+      setFolders(prev => [...prev, normalizedFolder]);
+      return normalizedFolder;
     }
   };
 
