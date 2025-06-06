@@ -131,13 +131,22 @@ export const ChatProvider = ({ children }) => {
           throw new Error('Invalid response format: missing answer');
         }
 
+        // Format sources with proper metadata for display in source panel
+        const sourceMetadata = (data.sources || []).map((s) => ({
+          title: s.title || 'Untitled Document',
+          jurisdiction: s.jurisdiction || 'Unknown',
+          s3Path: s.s3Path || '',
+          // Keep original source data for compatibility
+          ...s
+        }));
+
         setAnswer(data.answer);
-        setCitations(data.sources || []);
+        setCitations(sourceMetadata);
 
         const newEntry = {
           question: newQuestion,
           answer: data.answer,
-          citations: data.sources || [],
+          citations: sourceMetadata,
           timestamp: new Date().toISOString(),
           mode: 'folder-chat'
         };
