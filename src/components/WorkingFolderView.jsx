@@ -61,8 +61,8 @@ const WorkingFolderView = ({ isOpen, onClose, documents: initialDocuments, title
   useEffect(() => {
     if (!folder || isMobileFolder || currentDocuments.length === 0) return;
     
-    const allFilenames = currentDocuments.map(doc => normalizeTitleToFilename(doc.title));
-    const allIngested = allFilenames.every(fname => docIngestionStatus[fname] === true);
+    const allFilenames = currentDocuments.map(doc => doc.id.split('/').pop());
+    const allIngested = allFilenames.every(filename => docIngestionStatus[filename] === true);
     
     if (allIngested && folderIngestStatus === 'loading') {
       console.log("🎉 All documents are now ingested!");
@@ -89,14 +89,20 @@ const WorkingFolderView = ({ isOpen, onClose, documents: initialDocuments, title
     };
   }, [folder]);
 
-  // Helper function to normalize document title to filename format
-  const normalizeTitleToFilename = (title) => {
-    if (!title) return '';
-    
-    return title
-      .replace(/\s/g, '_')         // Replace spaces with underscores
-      .replace(/,/g, '_')          // Replace commas with underscores
-      + '.pdf';                    // Add .pdf extension
+  // Helper function to extract filename from document ID
+  const getFilenameFromDocId = (docId) => {
+    if (!docId) return '';
+    return docId.split('/').pop();
+  };
+
+  // Function to get a reliable user ID with better validation
+  const getUserId = () => {
+    const userId = user?.username || user?.userId;
+    if (!userId || userId === 'test-user') {
+      console.warn('No valid user ID available:', { user, username: user?.username, userId: user?.userId });
+      return null;
+    }
+    return userId;
   };
 
   // Fetch ingestion status when folder changes
@@ -113,7 +119,13 @@ const WorkingFolderView = ({ isOpen, onClose, documents: initialDocuments, title
         return;
       }
 
-      const userId = user?.username || user?.userId || 'test-user';
+      const userId = getUserId();
+      if (!userId) {
+        console.warn("No valid user ID available for ingestion status check");
+        setDocIngestionStatus({});
+        return;
+      }
+
       setStatusLoading(true);
 
       try {
@@ -228,7 +240,11 @@ const WorkingFolderView = ({ isOpen, onClose, documents: initialDocuments, title
       return;
     }
 
-    const userId = user?.username || user?.userId || 'test-user';
+    const userId = getUserId();
+    if (!userId) {
+      alert('Cannot ingest: user is not properly authenticated. Please refresh the page and try again.');
+      return;
+    }
 
     // Set loading state
     setFolderIngestStatus('loading');
@@ -279,7 +295,11 @@ const WorkingFolderView = ({ isOpen, onClose, documents: initialDocuments, title
     const folderId = folder?.folderId || folder?.id;
     if (!folderId) return;
 
-    const userId = user?.username || user?.userId || 'test-user';
+    const userId = getUserId();
+    if (!userId) {
+      console.warn("No valid user ID available for refreshing ingestion status");
+      return;
+    }
 
     try {
       console.log("🔄 Refreshing ingestion status...");
@@ -306,6 +326,18 @@ const WorkingFolderView = ({ isOpen, onClose, documents: initialDocuments, title
 
   // Function to poll ingestion status until all documents are ingested or timeout
   const pollIngestionStatus = async (userId, folderId, documentsToCheck) => {
+    // Validate that we still have a valid user ID for polling
+    const currentUserId = getUserId();
+    if (!currentUserId) {
+      console.warn("⚠️ No valid user ID available for polling, stopping...");
+      setFolderIngestStatus('error');
+      setFolderIngestMessage('User authentication lost during polling. Please refresh the page.');
+      return;
+    }
+
+    // Use the current user ID instead of the passed one in case it has changed
+    const validUserId = currentUserId;
+    
     const maxAttempts = 60; // 15 minutes at 15 second intervals
     let attempts = 0;
     
@@ -324,7 +356,7 @@ const WorkingFolderView = ({ isOpen, onClose, documents: initialDocuments, title
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ userId, folderId }),
+          body: JSON.stringify({ userId: validUserId, folderId }),
         });
 
         if (response.ok) {
@@ -333,8 +365,11 @@ const WorkingFolderView = ({ isOpen, onClose, documents: initialDocuments, title
             setDocIngestionStatus(data.doc_status);
             console.log(`✅ Ingestion status updated (attempt ${attempts}):`, data.doc_status);
             
-            // Check if all documents are ingested
-            const allIngested = documentsToCheck.every(doc => data.doc_status[normalizeTitleToFilename(doc.title)] === true);
+            // Check if all documents are ingested using filename extraction
+            const allIngested = documentsToCheck.every(doc => {
+              const filename = getFilenameFromDocId(doc.id);
+              return data.doc_status[filename] === true;
+            });
             
             if (allIngested) {
               console.log("🎉 All documents are now ingested! Stopping polling.");
@@ -364,14 +399,14 @@ const WorkingFolderView = ({ isOpen, onClose, documents: initialDocuments, title
 
   // Function to render document ingestion status
   const renderDocumentIngestionStatus = (doc) => {
-    const normalized = normalizeTitleToFilename(doc.title);
+    const filename = getFilenameFromDocId(doc.id);
     
     // Debug logging for key matching
     console.log("🔍 Checking ingestion status:");
-    console.log("doc.title:", doc.title);
-    console.log("normalized filename:", normalized);
+    console.log("doc.id:", doc.id);
+    console.log("extracted filename:", filename);
     console.log("Available status keys:", Object.keys(docIngestionStatus));
-    console.log("Status match:", docIngestionStatus[normalized]);
+    console.log("Status match:", docIngestionStatus[filename]);
     
     if (statusLoading) {
       return (
@@ -381,11 +416,11 @@ const WorkingFolderView = ({ isOpen, onClose, documents: initialDocuments, title
       );
     }
 
-    const isIngested = docIngestionStatus[normalized];
+    const isIngested = docIngestionStatus[filename];
     
     // Log if document filename results in undefined
     if (isIngested === undefined) {
-      console.log("⚠️ Normalized filename resulted in undefined status:", normalized);
+      console.log("⚠️ Filename resulted in undefined status:", filename);
     }
     
     if (isIngested === true) {
@@ -425,6 +460,9 @@ const WorkingFolderView = ({ isOpen, onClose, documents: initialDocuments, title
       return null;
     }
 
+    // Check if we have a valid user ID
+    const hasValidUser = getUserId() !== null;
+
     if (folderIngestStatus === 'loading') {
       return (
         <button
@@ -443,9 +481,12 @@ const WorkingFolderView = ({ isOpen, onClose, documents: initialDocuments, title
         <button
           className="folder-ingest-button success"
           onClick={handleReIngestFolder}
-          title={folderIngestMessage.includes('Ingestion complete') 
-            ? "All documents are ready for chat! Click to restart ingestion if needed." 
-            : "Ingestion started successfully. Click to restart ingestion."}
+          disabled={!hasValidUser}
+          title={!hasValidUser 
+            ? "Please refresh the page to authenticate properly before restarting ingestion."
+            : folderIngestMessage.includes('Ingestion complete') 
+              ? "All documents are ready for chat! Click to restart ingestion if needed." 
+              : "Ingestion started successfully. Click to restart ingestion."}
         >
           <span className="ingest-text">
             {folderIngestMessage.includes('Ingestion complete') 
@@ -461,7 +502,10 @@ const WorkingFolderView = ({ isOpen, onClose, documents: initialDocuments, title
         <button
           className="folder-ingest-button error"
           onClick={handleIngestFolder}
-          title={`Error: ${folderIngestMessage}. Click to retry.`}
+          disabled={!hasValidUser}
+          title={!hasValidUser 
+            ? "Please refresh the page to authenticate properly before starting ingestion."
+            : `Error: ${folderIngestMessage}. Click to retry.`}
         >
           <span className="ingest-text">❌ Start Ingestion</span>
         </button>
@@ -473,10 +517,15 @@ const WorkingFolderView = ({ isOpen, onClose, documents: initialDocuments, title
       <button
         className="folder-ingest-button"
         onClick={handleIngestFolder}
-        title="Start ingestion process for all documents in this folder"
+        disabled={!hasValidUser}
+        title={!hasValidUser 
+          ? "Please refresh the page to authenticate properly before starting ingestion."
+          : "Start ingestion process for all documents in this folder"}
       >
         <FaRocket />
-        <span className="ingest-text">🚀 Start Ingestion</span>
+        <span className="ingest-text">
+          {!hasValidUser ? '🔄 Authentication Required' : '🚀 Start Ingestion'}
+        </span>
       </button>
     );
   };
